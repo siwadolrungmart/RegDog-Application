@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1005419115490",
+    "project_id": "senior-project-regdog",
+    "storage_bucket": "senior-project-regdog.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1005419115490:android:274872b2a6bcdc55bb3fbb",
+        "android_client_info": {
+          "package_name": "com.example.regdogapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAhHy1WsEKWSEh8jW4NSoSuht7Ytfc9JQU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
