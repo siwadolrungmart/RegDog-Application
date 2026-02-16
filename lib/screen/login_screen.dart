@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 // ต้อง import ไฟล์หน้าสร้างบัญชีเพื่อให้เรียกใช้ class ได้
 import 'package:regdogapp/screen/create_account_screen.dart'; 
+// นำเข้าไฟล์หน้าเลือกสถานะสุนัข (ตรวจสอบ path ให้ตรงกับโปรเจกต์ของคุณ)
+import 'package:regdogapp/screen/registerfirst.dart'; 
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -25,6 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
             image: AssetImage('assets/bg_watercolor.png'), 
             fit: BoxFit.cover,
           ),
+          
         ),
         child: SafeArea(
           child: SingleChildScrollView(
@@ -113,12 +116,20 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // --- 4. ปุ่มเข้าสู่ระบบ ---
+                  // --- 4. ปุ่มเข้าสู่ระบบ (อัปเดตแล้ว) ---
                   SizedBox(
                     width: double.infinity,
                     height: 58,
                     child: ElevatedButton(
-                      onPressed: () => print("Login pressed"),
+                      onPressed: () {
+                        // เปลี่ยนหน้าไปยัง PetStatusScreen และแทนที่หน้า Login ใน Stack
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const Registerfirst(),
+                          ),
+                        );
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFEF0B3),
                         foregroundColor: Colors.black87,
@@ -163,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 25),
 
-                  // --- 7. Footer สร้างบัญชีใหม่ (จุดที่แก้ไข) ---
+                  // --- 7. Footer สร้างบัญชีใหม่ ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
