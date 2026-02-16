@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; 
 import 'package:regdogapp/screen/login_screen.dart'; 
-import 'package:regdogapp/screen/registerfirst.dart'; 
+import 'package:regdogapp/screen/registerhavedog.dart'; 
+import 'package:regdogapp/screen/registergender.dart'; 
 import 'package:google_fonts/google_fonts.dart';
-import 'package:regdogapp/screen/registersecond.dart'; 
+import 'package:regdogapp/screen/registerdogname.dart'; 
+import 'package:regdogapp/screen/registerbirthday.dart'; 
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:regdogapp/screen/registerbreed.dart'; 
 void main() async {
   // ต้องมีบรรทัดนี้เสมอเมื่อมีการใช้ async ในฟังก์ชัน main
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,9 +55,19 @@ class RegDogApp extends StatelessWidget {
           child: child,
         );
       },
+
+      // ให้ปฏิทินรู้จักภาษาไทย 
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('th', 'TH'), // ระบุว่าแอปรองรับภาษาไทย
+      ],
       
       // หน้าแรกที่แอปจะเปิดขึ้นมา
-      home: const Registersecond(), 
+      home: const Registerbreed(), 
     );
   }
 }

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:regdogapp/screen/registerdogname.dart';
 
-class Registerfirst extends StatelessWidget {
-  const Registerfirst({super.key});
+class Registerhavedog extends StatelessWidget {
+  const Registerhavedog({super.key});
 
   // กำหนดสี Constants เพื่อความ Clean และนำไปใช้ซ้ำได้ง่าย
   static const Color _primaryPastelBlue = Color(0xFFBCE6EB);
@@ -97,6 +98,12 @@ class Registerfirst extends StatelessWidget {
                               ),
                               onPressed: () {
                                 // TODO: ใส่ Logic สำหรับผู้ที่มีสุนัข
+                                 Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const Registerdogname(),
+                          ),
+                        );
                               },
                               child: const Text(
                                 'ฉันมีสุนัข',
@@ -128,6 +135,12 @@ class Registerfirst extends StatelessWidget {
                               ),
                               onPressed: () {
                                 // TODO: ใส่ Logic สำหรับผู้ที่มีสุนัข
+                                 Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const Registerdogname(),
+                          ),
+                        );
                               },
                               child: const Text(
                                 'ฉันไม่มีสุนัข',

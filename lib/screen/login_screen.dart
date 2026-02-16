@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 // ต้อง import ไฟล์หน้าสร้างบัญชีเพื่อให้เรียกใช้ class ได้
 import 'package:regdogapp/screen/create_account_screen.dart'; 
 // นำเข้าไฟล์หน้าเลือกสถานะสุนัข (ตรวจสอบ path ให้ตรงกับโปรเจกต์ของคุณ)
-import 'package:regdogapp/screen/registerfirst.dart'; 
+import 'package:regdogapp/screen/registerhavedog.dart'; 
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -126,7 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const Registerfirst(),
+                            builder: (context) => const Registerhavedog(),
                           ),
                         );
                       },
