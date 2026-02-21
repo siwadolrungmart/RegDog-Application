@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:regdogapp/screen/registerbirthday.dart';
+import 'package:regdogapp/screen/register/registerbirthday.dart';
 // TODO: อย่าลืม Import ไฟล์ Registerhavedog ของคุณไว้ด้านบนสุดด้วยนะครับ
 // import 'package:regdogapp/screen/registerhavedog.dart'; 
 

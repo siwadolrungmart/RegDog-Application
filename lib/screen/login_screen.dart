@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 // ต้อง import ไฟล์หน้าสร้างบัญชีเพื่อให้เรียกใช้ class ได้
 import 'package:regdogapp/screen/create_account_screen.dart'; 
 // นำเข้าไฟล์หน้าเลือกสถานะสุนัข (ตรวจสอบ path ให้ตรงกับโปรเจกต์ของคุณ)
-import 'package:regdogapp/screen/registerhavedog.dart'; 
+import 'package:regdogapp/screen/register/registerhavedog.dart'; 
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,26 +17,22 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    
     return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            // ปรับ path ให้ตรงกับโฟลเดอร์ assets/images/
-            image: AssetImage('assets/bg_watercolor.png'), 
-            fit: BoxFit.cover,
-          ),
+      
           
-        ),
+        // ),
         child: SafeArea(
           child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              padding: const EdgeInsets.symmetric(horizontal: 0.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 30),
+               
                   
                   // --- 1. ส่วนรูปสุนัข (Image Card) ---
                   Center(
@@ -58,8 +54,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           children: [
                             Image.asset(
                               'assets/dog.png', // ปรับ path รูปสุนัข
-                              height: 280,
-                              width: double.infinity,
+                              height: 300,
+                              width: 398,
                               fit: BoxFit.cover,
                             ),
                             const Padding(
@@ -80,18 +76,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 35),
+                  const SizedBox(height: 20),
 
                   // --- 2. ส่วนหัวข้อ (Headers) ---
                   const Text(
                     "ยินดีต้อนรับสู่ RegDog",
-                    style: TextStyle(fontSize: 18, color: Colors.black54),
+                    style: TextStyle(fontSize: 24, color: Colors.black, fontWeight: FontWeight.w500),
                   ),
                   const Text(
                     "เข้าสู่บัญชีของคุณ",
-                    style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: -0.5),
                   ),
-                  const SizedBox(height: 25),
+                  const SizedBox(height: 15),
 
                   // --- 3. ช่องกรอกข้อมูล ---
                   _buildTextField(
@@ -99,27 +95,39 @@ class _LoginScreenState extends State<LoginScreen> {
                     hint: "อีเมล",
                     icon: Icons.email_outlined,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   _buildTextField(
                     controller: _passwordController,
                     hint: "รหัสผ่าน",
                     icon: Icons.lock_outline,
                     isPassword: true,
                   ),
-
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () => print("Forgot Password"),
-                      child: const Text("ลืมรหัสผ่าน?", style: TextStyle(color: Colors.black45)),
-                    ),
-                  ),
+                 const SizedBox(height: 5),
+                 Align(
+  alignment: Alignment.centerRight,
+  child: TextButton(
+    onPressed: () => print("Forgot Password"),
+    style: TextButton.styleFrom(
+      padding: EdgeInsets.zero,        // ลบ Padding ภายในปุ่มออก
+      minimumSize: Size.zero,         // ลบขนาดขั้นต่ำออก
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap, // บีบพื้นที่กดให้เท่ากับเนื้อหา
+    ),
+    child: const Text(
+      "ลืมรหัสผ่าน?",
+      style: TextStyle(
+        fontSize: 12,
+        color: Colors.black45,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+  ),
+),
                   const SizedBox(height: 10),
 
                   // --- 4. ปุ่มเข้าสู่ระบบ (อัปเดตแล้ว) ---
                   SizedBox(
                     width: double.infinity,
-                    height: 58,
+                    height: 62,
                     child: ElevatedButton(
                       onPressed: () {
                         // เปลี่ยนหน้าไปยัง PetStatusScreen และแทนที่หน้า Login ใน Stack
@@ -136,7 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         elevation: 0,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       ),
-                      child: const Text("เข้าสู่ระบบ", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      child: const Text("เข้าสู่ระบบ", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                     ),
                   ),
                   
@@ -158,27 +166,27 @@ class _LoginScreenState extends State<LoginScreen> {
                   // --- 6. ปุ่ม Google Login ---
                   SizedBox(
                     width: double.infinity,
-                    height: 58,
+                    height: 45,
                     child: OutlinedButton.icon(
                       onPressed: () => print("Google Login"),
                       icon: Image.network(
                         'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1200px-Google_%22G%22_logo.svg.png',
                         height: 22,
                       ),
-                      label: const Text("Google", style: TextStyle(color: Colors.black87, fontSize: 16)),
+                      label: const Text("Google", style: TextStyle(color: Colors.black87,fontWeight: FontWeight.w600, fontSize: 14)),
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Colors.black12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 25),
+                  const SizedBox(height: 5),
 
                   // --- 7. Footer สร้างบัญชีใหม่ ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text("คุณยังไม่มีบัญชีใช่ไหม?", style: TextStyle(color: Colors.black45)),
+                      const Text("คุณยังไม่มีบัญชีใช่ไหม?", style: TextStyle(color: Colors.black45, fontWeight: FontWeight.w500)),
                       TextButton(
                         onPressed: () {
                           // ใช้ Navigator เพื่อเปลี่ยนหน้าไปยัง CreateAccountScreen
@@ -197,6 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
+      
                 ],
               ),
             ),
@@ -206,13 +215,15 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildTextField({
+Widget _buildTextField({
     required TextEditingController controller,
     required String hint,
     required IconData icon,
     bool isPassword = false,
   }) {
     return Container(
+      width: double.infinity,
+      height: 45,
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.9),
         borderRadius: BorderRadius.circular(15),
@@ -220,9 +231,17 @@ class _LoginScreenState extends State<LoginScreen> {
       child: TextField(
         controller: controller,
         obscureText: isPassword,
+        // --- 1. ปรับขนาดตัวอักษรที่ผู้ใช้พิมพ์ ---
+        style: const TextStyle(fontSize: 12), 
+        textAlignVertical: TextAlignVertical.center,
         decoration: InputDecoration(
           hintText: hint,
-          prefixIcon: Icon(icon, color: Colors.black26),
+          // --- 2. ปรับขนาดตัวอักษร Hint (คำใบ้) ---
+          hintStyle: const TextStyle(fontSize: 12), 
+         prefixIcon: Padding(
+  padding: const EdgeInsets.only(left: 12, right: 0), // left: ระยะห่างจากขอบกล่อง, right: ระยะห่างจากตัวหนังสือ
+  child: Icon(icon, color: Colors.black26, size: 24),
+), // ปรับขนาดไอคอนให้เล็กลงตามตัวหนังสือ
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(15),
             borderSide: const BorderSide(color: Colors.black12),
@@ -231,7 +250,8 @@ class _LoginScreenState extends State<LoginScreen> {
             borderRadius: BorderRadius.circular(15),
             borderSide: const BorderSide(color: Color(0xFFFEF0B3), width: 2),
           ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 18),
+          // ปรับ Padding เล็กน้อยเพื่อให้ตัวหนังสืออยู่กลางกล่องพอดีเมื่อขนาดเล็กลง
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
         ),
       ),
     );

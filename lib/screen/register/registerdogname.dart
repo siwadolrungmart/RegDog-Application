@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:regdogapp/screen/registergender.dart';
+import 'package:regdogapp/screen/register/registergender.dart';
 
 class Registerdogname extends StatefulWidget {
   const Registerdogname({super.key});

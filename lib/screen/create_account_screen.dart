@@ -56,23 +56,13 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // พื้นหลัง
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/bg_watercolor.png'),
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
+        
           SafeArea(
             child: Column(
               children: [
                 // Header
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 0),
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
@@ -80,44 +70,50 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                         alignment: Alignment.centerLeft,
                         child: IconButton(
                           icon: const Icon(Icons.arrow_back),
-                          onPressed: () => Navigator.pop(context),
+                          // onPressed: () => Navigator.pop(context),
+                          onPressed: () => print("Back button pressed"),
                         ),
                       ),
                       const Text("สร้างบัญชีใหม่",
-                          style: TextStyle(fontSize: 16)),
+                          style: TextStyle(fontWeight: FontWeight.w500,fontSize: 16)),
                     ],
                   ),
                 ),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 0),
                     child: Form( // ครอบด้วย Form เพื่อการตรวจสอบข้อมูล
                       key: _formKey,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const SizedBox(height: 40),
-                          const Text("ยินดีต้อนรับสู่ RegDog",
-                              style: TextStyle(fontSize: 18, color: Colors.black54)),
-                          const Text("สร้างบัญชีของคุณ",
-                              style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 30),
-                          _buildField(
+                          const SizedBox(height: 25),
+                          const Text(
+                    "ยินดีต้อนรับสู่ RegDog",
+                    style: TextStyle(fontSize: 24, color: Colors.black, fontWeight: FontWeight.w500),
+                  ),
+                  const Text(
+                    "เข้าสู่บัญชีของคุณ",
+                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+                  ),
+                  const SizedBox(height: 15),
+                         
+                          _buildTextField(
                               controller: _emailController,
                               hint: "อีเมล",
                               icon: Icons.email_outlined),
                           const SizedBox(height: 16),
-                          _buildField(
+                          _buildTextField(
                               controller: _passwordController,
                               hint: "รหัสผ่าน",
                               icon: Icons.lock_outline,
-                              isPass: true),
+                              isPassword: true),
                           const SizedBox(height: 16),
-                          _buildField(
+                          _buildTextField(
                               controller: _confirmPasswordController,
                               hint: "ยืนยันรหัสผ่าน",
                               icon: Icons.lock_outline,
-                              isPass: true),
+                              isPassword: true),
                           const SizedBox(height: 30),
                           SizedBox(
                             width: double.infinity,
@@ -150,25 +146,44 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     );
   }
 
-  Widget _buildField(
-      {required TextEditingController controller,
-      required String hint,
-      required IconData icon,
-      bool isPass = false}) {
-    return TextFormField( // เปลี่ยนจาก TextField เป็น TextFormField
-      controller: controller,
-      obscureText: isPass,
-      decoration: InputDecoration(
-        hintText: hint,
-        prefixIcon: Icon(icon, color: Colors.black26),
-        filled: true,
-        fillColor: Colors.white.withOpacity(0.8),
-        border: OutlineInputBorder(
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    bool isPassword = false,
+  }) {
+    return Container(
+      width: double.infinity,
+      height: 45,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: isPassword,
+        // --- 1. ปรับขนาดตัวอักษรที่ผู้ใช้พิมพ์ ---
+        style: const TextStyle(fontSize: 12), 
+        textAlignVertical: TextAlignVertical.center,
+        decoration: InputDecoration(
+          hintText: hint,
+          // --- 2. ปรับขนาดตัวอักษร Hint (คำใบ้) ---
+          hintStyle: const TextStyle(fontSize: 12), 
+         prefixIcon: Padding(
+  padding: const EdgeInsets.only(left: 12, right: 0), // left: ระยะห่างจากขอบกล่อง, right: ระยะห่างจากตัวหนังสือ
+  child: Icon(icon, color: Colors.black26, size: 24),
+), // ปรับขนาดไอคอนให้เล็กลงตามตัวหนังสือ
+          enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: Colors.black12)),
-        enabledBorder: OutlineInputBorder(
+            borderSide: const BorderSide(color: Colors.black12),
+          ),
+          focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: Colors.black12)),
+            borderSide: const BorderSide(color: Color(0xFFFEF0B3), width: 2),
+          ),
+          // ปรับ Padding เล็กน้อยเพื่อให้ตัวหนังสืออยู่กลางกล่องพอดีเมื่อขนาดเล็กลง
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+        ),
       ),
     );
   }
