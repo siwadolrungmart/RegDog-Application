@@ -26,29 +26,17 @@ class _RegisterdognameState extends State<Registerdogname> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent, 
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          // --- 1. เลเยอร์ Background ---
-          Positioned.fill(
-            child: Image.asset(
-              'assets/bg_watercolor.png', 
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                 debugPrint("Error loading background image: $error");
-                 return Container(color: Colors.white);
-              }, 
-            ),
-          ),
-
-          // --- 2. เลเยอร์ Content หลัก ---
+    
           SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ปุ่ม Back Arrow ด้านบนซ้าย
                 Padding(
-                  padding: const EdgeInsets.only(left: 8.0, top: 8.0),
+                  padding: const EdgeInsets.only(left: 0, top: 0),
                   child: IconButton(
                     icon: const Icon(Icons.arrow_back, color: _textDark),
                     onPressed: () {
@@ -62,29 +50,33 @@ class _RegisterdognameState extends State<Registerdogname> {
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 0),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const SizedBox(height: 20),
-                          
+                          const SizedBox(height: 30),
+
                           // รูปการ์ตูนสุนัข
                           Image.asset(
                             'assets/dog-ping.png',
                             width: 200,
                             height: 200,
                             fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) => 
-                                const Icon(Icons.pets, size: 150, color: Colors.grey),
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(
+                                  Icons.pets,
+                                  size: 150,
+                                  color: Colors.grey,
+                                ),
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 18),
 
                           // ข้อความ "ชื่อสุนัขของคุณ"
                           const Text(
                             'ชื่อสุนัขของคุณ',
                             style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w400,
                               color: _textDark,
                             ),
                           ),
@@ -94,7 +86,7 @@ class _RegisterdognameState extends State<Registerdogname> {
                           Container(
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(15),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.02),
@@ -104,24 +96,42 @@ class _RegisterdognameState extends State<Registerdogname> {
                               ],
                             ),
                             child: TextField(
+                              
                               controller: _dogNameController,
+
                               decoration: InputDecoration(
                                 hintText: 'ชื่อ',
-                                hintStyle: const TextStyle(color: Colors.black38),
-                                prefixIcon: const Icon(Icons.pets, color: Colors.black26, size: 22),
-                                contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                                hintStyle: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  color: Colors.black38,
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.pets,
+                                  color: Colors.black26,
+                                  size: 24,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                  horizontal: 12,
+                                ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(16),
-                                  borderSide: const BorderSide(color: _borderColor),
+                                  borderSide: const BorderSide(
+                                    color: _borderColor,
+                                  ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(16),
-                                  borderSide: const BorderSide(color: _btnYellow, width: 2),
+                                  borderSide: const BorderSide(
+                                    color: _btnYellow,
+                                    width: 2,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 10),
 
                           // --- กลุ่มปุ่ม "ข้าม" และ "ต่อไป" ---
                           Row(
@@ -129,44 +139,52 @@ class _RegisterdognameState extends State<Registerdogname> {
                             children: [
                               // ปุ่ม "ข้าม"
                               SizedBox(
-                                height: 48,
+                                height: 40,
+                                
                                 child: OutlinedButton(
                                   style: OutlinedButton.styleFrom(
+                                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                     backgroundColor: Colors.white,
-                                    side: const BorderSide(color: _btnYellow, width: 1.5),
+                                    side: const BorderSide(
+                                      color: _btnYellow,
+                                      width: 1.5,
+                                    ),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(24),
+                                      borderRadius: BorderRadius.circular(100),
                                     ),
                                     elevation: 0,
                                   ),
                                   onPressed: () {
                                     // TODO: ใส่ Logic สำหรับการกดข้าม
-                                     Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const Registergender(),
-                          ),
-                        );
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const Registergender(),
+                                      ),
+                                    );
                                   },
                                   child: const Text(
                                     'ข้าม',
                                     style: TextStyle(
-                                      fontSize: 16,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.w500,
                                       color: _textDark,
                                     ),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              
+                              const SizedBox(width: 5),
+
                               // ปุ่ม "ต่อไป"
                               SizedBox(
-                                height: 48,
+                                height: 40,
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                     backgroundColor: _btnYellow,
-                                    foregroundColor: Colors.black54, // สีเอฟเฟกต์ตอนกด
+                                    foregroundColor:
+                                        Colors.black54, // สีเอฟเฟกต์ตอนกด
                                     elevation: 0,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(24),
@@ -174,13 +192,16 @@ class _RegisterdognameState extends State<Registerdogname> {
                                   ),
                                   onPressed: () {
                                     // TODO: ส่งค่าชื่อน้องหมาไปหน้าถัดไป
-                                     Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const Registergender(),
-                          ),
-                        );
-                                    print("ชื่อน้องหมาคือ: ${_dogNameController.text}");
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const Registergender(),
+                                      ),
+                                    );
+                                    print(
+                                      "ชื่อน้องหมาคือ: ${_dogNameController.text}",
+                                    );
                                   },
                                   child: const Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -188,21 +209,25 @@ class _RegisterdognameState extends State<Registerdogname> {
                                       Text(
                                         'ต่อไป',
                                         style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
                                           color: _textDark,
                                         ),
                                       ),
                                       SizedBox(width: 4),
-                                      Icon(Icons.arrow_forward, size: 20, color: _textDark),
+                                      Icon(
+                                        Icons.arrow_forward,
+                                        size: 20,
+                                        color: _textDark,
+                                      ),
                                     ],
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          
-                          const SizedBox(height: 40), 
+
+                          const SizedBox(height: 40),
                         ],
                       ),
                     ),

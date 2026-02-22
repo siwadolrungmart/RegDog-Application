@@ -77,16 +77,7 @@ class _RegisterbirthdayState extends State<Registerbirthday> {
       backgroundColor: Colors.transparent, // โปร่งใสเพื่อใช้พื้นหลัง Stack
       body: Stack(
         children: [
-          // --- 1. เลเยอร์ Background ---
-          Positioned.fill(
-            child: Image.asset(
-              'assets/bg_watercolor.png', // เปลี่ยน path ให้ตรงกับโปรเจกต์คุณ
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  Container(color: Colors.white),
-            ),
-          ),
-
+          
           // --- 2. เลเยอร์ Content หลัก ---
           SafeArea(
             child: Column(
@@ -94,7 +85,7 @@ class _RegisterbirthdayState extends State<Registerbirthday> {
               children: [
                 // ปุ่ม Back Arrow
                 Padding(
-                  padding: const EdgeInsets.only(left: 8.0, top: 8.0),
+                  padding: const EdgeInsets.only(left: 0, top: 0),
                   child: IconButton(
                     icon: const Icon(Icons.arrow_back, color: _textDark),
                     onPressed: () {
@@ -108,11 +99,11 @@ class _RegisterbirthdayState extends State<Registerbirthday> {
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 0),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 30),
 
                           // รูปการ์ตูนสุนัข
                           Image.asset(
@@ -123,19 +114,19 @@ class _RegisterbirthdayState extends State<Registerbirthday> {
                             errorBuilder: (context, error, stackTrace) =>
                                 const Icon(Icons.pets, size: 150, color: Colors.black12),
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 18),
 
                           // ข้อความหัวข้อ
                           const Text(
                             'วันเกิดสุนัขของคุณ',
                             style: TextStyle(
                               fontFamily: 'Inter', // ตาม requirement
-                              fontSize: 22,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w400,
                               color: _textDark,
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 10),
 
                           // --- ช่องเลือกวันที่ (TextField) ---
                           Container(
@@ -155,7 +146,7 @@ class _RegisterbirthdayState extends State<Registerbirthday> {
                                 hintText: 'วัน/เดือน/ปี',
                                 hintStyle: const TextStyle(color: Colors.black38),
                                 suffixIcon: const Icon(Icons.calendar_month, color: Colors.black54),
-                                contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                                contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(16),
                                   borderSide: const BorderSide(color: _borderColor),
@@ -167,7 +158,7 @@ class _RegisterbirthdayState extends State<Registerbirthday> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 10),
 
                           // --- ปุ่ม "ข้าม" และ "ต่อไป" (Row ชิดขวา) ---
                           Row(
@@ -175,9 +166,10 @@ class _RegisterbirthdayState extends State<Registerbirthday> {
                             children: [
                               // ปุ่ม ข้าม
                               SizedBox(
-                                height: 48,
+                                height: 40,
                                 child: OutlinedButton(
                                   style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                     backgroundColor: Colors.white,
                                     side: const BorderSide(color: _btnYellow, width: 1.5),
                                     shape: RoundedRectangleBorder(
@@ -192,20 +184,21 @@ class _RegisterbirthdayState extends State<Registerbirthday> {
                                   child: const Text(
                                     'ข้าม',
                                     style: TextStyle(
-                                      fontSize: 16,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.w500,
                                       color: _textDark,
                                     ),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12), // ระยะห่างระหว่างปุ่ม
+                              const SizedBox(width: 10), // ระยะห่างระหว่างปุ่ม
 
                               // ปุ่ม ต่อไป
                               SizedBox(
-                                height: 48,
+                                height: 40,
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                     backgroundColor: _btnYellow,
                                     foregroundColor: Colors.black54, // เอฟเฟกต์สีตอนกด
                                     elevation: 0,
@@ -223,8 +216,8 @@ class _RegisterbirthdayState extends State<Registerbirthday> {
                                       Text(
                                         'ต่อไป',
                                         style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
                                           color: _textDark,
                                         ),
                                       ),

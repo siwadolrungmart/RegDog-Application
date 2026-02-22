@@ -13,22 +13,22 @@ class Registerhavedog extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       // เปลี่ยนสีพื้นหลัง Scaffold เป็น transparent เพื่อให้เห็นรูปข้างหลังชัดเจน
-      backgroundColor: Colors.transparent, 
+      // backgroundColor: Colors.transparent, 
       body: Stack(
         children: [
           // --- 1. เลเยอร์ Background (แก้ไขใหม่) ---
-          Positioned.fill(
-            child: Image.asset(
-              // เปลี่ยน path ตรงนี้เป็นรูปที่คุณต้องการ
-              'assets/bg_watercolor.png', 
-              fit: BoxFit.cover, // ขยายเต็มจอโดยไม่เสียสัดส่วน
-              // Fallback สีขาวกรณีที่ยังไม่ได้ใส่รูปภาพเข้าโปรเจกต์ หรือ path ผิด
-              errorBuilder: (context, error, stackTrace) {
-                 debugPrint("Error loading background image: $error");
-                 return Container(color: Colors.white);
-              }, 
-            ),
-          ),
+          // Positioned.fill(
+          //   child: Image.asset(
+          //     // เปลี่ยน path ตรงนี้เป็นรูปที่คุณต้องการ
+          //     'assets/bg_watercolor.png', 
+          //     fit: BoxFit.cover, // ขยายเต็มจอโดยไม่เสียสัดส่วน
+          //     // Fallback สีขาวกรณีที่ยังไม่ได้ใส่รูปภาพเข้าโปรเจกต์ หรือ path ผิด
+          //     errorBuilder: (context, error, stackTrace) {
+          //        debugPrint("Error loading background image: $error");
+          //        return Container(color: Colors.white);
+          //     }, 
+          //   ),
+          // ),
 
           // --- 2. เลเยอร์ Content หลัก ---
           SafeArea(
@@ -37,7 +37,7 @@ class Registerhavedog extends StatelessWidget {
               children: [
                 // ปุ่ม Back Arrow ด้านบนซ้าย
                 Padding(
-                  padding: const EdgeInsets.only(left: 8.0, top: 8.0),
+                  padding: const EdgeInsets.only(left: 0, top: 0),
                   child: IconButton(
                     icon: const Icon(Icons.arrow_back, color: _textDark),
                     onPressed: () {
@@ -52,11 +52,11 @@ class Registerhavedog extends StatelessWidget {
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 0.0),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 30),
                           
                           // รูปการ์ตูนสุนัข
                           Image.asset(
@@ -67,23 +67,23 @@ class Registerhavedog extends StatelessWidget {
                             errorBuilder: (context, error, stackTrace) => 
                                 const Icon(Icons.pets, size: 150, color: Colors.grey),
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 18),
 
                           // ข้อความ "คุณมีสุนัขหรือไม่"
                           const Text(
                             'คุณมีสุนัขหรือไม่',
                             style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w400,
                               color: _textDark,
                             ),
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 10),
 
                           // ปุ่มที่ 1: ฉันมีสุนัข (Outline)
                           SizedBox(
                             width: double.infinity,
-                            height: 56, // ความสูงมาตรฐานเพื่อให้กดง่าย
+                            height: 45, // ความสูงมาตรฐานเพื่อให้กดง่าย
                             child: OutlinedButton(
                               style: OutlinedButton.styleFrom(
                                 backgroundColor: Colors.white.withOpacity(0.8), // เพิ่มความโปร่งใสให้ปุ่มนิดหน่อยเพื่อให้เข้ากับพื้นหลัง
@@ -108,8 +108,8 @@ class Registerhavedog extends StatelessWidget {
                               child: const Text(
                                 'ฉันมีสุนัข',
                                 style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
                                   color: _textLightBlue,
                                 ),
                               ),
@@ -120,7 +120,7 @@ class Registerhavedog extends StatelessWidget {
                           // ปุ่มที่ 2: ฉันไม่มีสุนัข (Filled)
                           SizedBox(
                             width: double.infinity,
-                            height: 56, // ความสูงมาตรฐานเพื่อให้กดง่าย
+                            height: 45, // ความสูงมาตรฐานเพื่อให้กดง่าย
                             child: OutlinedButton(
                               style: OutlinedButton.styleFrom(
                                 backgroundColor: Colors.white.withOpacity(0.8), // เพิ่มความโปร่งใสให้ปุ่มนิดหน่อยเพื่อให้เข้ากับพื้นหลัง
@@ -145,8 +145,8 @@ class Registerhavedog extends StatelessWidget {
                               child: const Text(
                                 'ฉันไม่มีสุนัข',
                                 style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
                                   color: _textLightBlue,
                                 ),
                               ),

@@ -1,1 +1,61 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"senior-project-regdog","appId":"1:1005419115490:android:274872b2a6bcdc55bb3fbb","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"senior-project-regdog","configurations":{"android":"1:1005419115490:android:274872b2a6bcdc55bb3fbb","ios":"1:1005419115490:ios:13a7f53de10cf743bb3fbb","macos":"1:1005419115490:ios:13a7f53de10cf743bb3fbb","web":"1:1005419115490:web:ebf79bc20e0a3ecabb3fbb","windows":"1:1005419115490:web:c790f5289eb2f226bb3fbb"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "senior-project-regdog",
+          "appId": "1:1005419115490:android:274872b2a6bcdc55bb3fbb",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "senior-project-regdog",
+          "configurations": {
+            "android": "1:1005419115490:android:274872b2a6bcdc55bb3fbb",
+            "ios": "1:1005419115490:ios:13a7f53de10cf743bb3fbb",
+            "macos": "1:1005419115490:ios:13a7f53de10cf743bb3fbb",
+            "web": "1:1005419115490:web:ebf79bc20e0a3ecabb3fbb",
+            "windows": "1:1005419115490:web:c790f5289eb2f226bb3fbb"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint",
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ],
+  "firestore": {
+    "database": "(default)",
+    "location": "asia-southeast3",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "emulators": {
+    "functions": {
+      "port": 5001
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "ui": {
+      "enabled": true
+    },
+    "singleProjectMode": true
+  }
+}

@@ -26,15 +26,8 @@ class _RegistergenderState extends State<Registergender> {
       backgroundColor: Colors.transparent, // โปร่งใสเพื่อโชว์พื้นหลัง
       body: Stack(
         children: [
-          // --- 1. เลเยอร์ Background ลาย Pastel Brush ---
-          Positioned.fill(
-            child: Image.asset(
-              'assets/bg_watercolor.png',
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  Container(color: Colors.white), // Fallback สีขาว
-            ),
-          ),
+
+          
 
           // --- 2. เลเยอร์ Content หลัก ---
           SafeArea(
@@ -43,7 +36,7 @@ class _RegistergenderState extends State<Registergender> {
               children: [
                 // ส่วนปุ่ม Back Arrow สีดำ มุมซ้ายบน
                 Padding(
-                  padding: const EdgeInsets.only(left: 8.0, top: 8.0),
+                  padding: const EdgeInsets.only(left: 0, top: 0),
                   child: IconButton(
                     icon: const Icon(Icons.arrow_back, color: _textDark),
                     onPressed: () {
@@ -57,11 +50,11 @@ class _RegistergenderState extends State<Registergender> {
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 0),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const SizedBox(height: 30),
+                          const SizedBox(height: 20),
 
                           // รูปการ์ตูนสุนัขตรงกลาง
                           Image.asset(
@@ -72,19 +65,19 @@ class _RegistergenderState extends State<Registergender> {
                             errorBuilder: (context, error, stackTrace) =>
                                 const Icon(Icons.pets, size: 150, color: Colors.grey),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 18),
 
                           // ข้อความหัวข้อ
                           const Text(
                             'เพศสุนัขของคุณ',
                             style: TextStyle(
                               fontFamily: 'Inter',
-                              fontWeight: FontWeight.w600,
-                              fontSize: 22,
+                              fontWeight: FontWeight.w400,
+                              fontSize: 20,
                               color: _textDark,
                             ),
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 10),
 
                           // --- 3. ส่วนปุ่มเลือกเพศ (Row) ---
                           Row(
@@ -99,7 +92,7 @@ class _RegistergenderState extends State<Registergender> {
                                   defaultBorderColor: _borderColor,
                                 ),
                               ),
-                              const SizedBox(width: 16), // ระยะห่าง 16px ตาม requirement
+                              const SizedBox(width: 10), // ระยะห่าง 16px ตาม requirement
                               
                               // ปุ่มขวา: เพศเมีย
                               Expanded(
@@ -193,7 +186,7 @@ class _RegistergenderState extends State<Registergender> {
           style: TextStyle(
             fontFamily: 'Inter',
             fontWeight: FontWeight.w600,
-            fontSize: 16,
+            fontSize: 14,
             color: isSelected ? _textDark : defaultTextColor.withOpacity(0.8), 
           ),
         ),

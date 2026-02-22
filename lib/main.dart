@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:regdogapp/screen/homepage.dart';
 
 // Import ไฟล์หน้าจอต่างๆ ของคุณ
 import 'firebase_options.dart'; 
@@ -70,7 +71,7 @@ class RegDogApp extends StatelessWidget {
           ),
           child: Padding(
             // เว้นระยะด้านบน 55 px เพื่อหลบ Dynamic Island สำหรับ iPhone 15 Pro Max
-            padding: const EdgeInsets.only(top: 55, left: 16, right: 16),
+            padding: const EdgeInsets.only(top: 0, left: 16, right: 16),
             child: child,
           ),
         );
@@ -86,7 +87,7 @@ class RegDogApp extends StatelessWidget {
         Locale('th', 'TH'),
       ],
       
-      home: const CreateAccountScreen(), 
+      home: const LoginScreen(), 
     );
   }
 }

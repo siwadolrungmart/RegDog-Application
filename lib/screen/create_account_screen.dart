@@ -1,6 +1,7 @@
 // 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:regdogapp/screen/login_screen.dart';
 
 class CreateAccountScreen extends StatefulWidget {
   const CreateAccountScreen({super.key});
@@ -71,7 +72,16 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                         child: IconButton(
                           icon: const Icon(Icons.arrow_back),
                           // onPressed: () => Navigator.pop(context),
-                          onPressed: () => print("Back button pressed"),
+                          
+                         onPressed: () {
+                        // เปลี่ยนหน้าไปยัง PetStatusScreen และแทนที่หน้า Login ใน Stack
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const LoginScreen(),
+                          ),
+                        );
+                      },
                         ),
                       ),
                       const Text("สร้างบัญชีใหม่",
@@ -102,19 +112,19 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                               controller: _emailController,
                               hint: "อีเมล",
                               icon: Icons.email_outlined),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 10),
                           _buildTextField(
                               controller: _passwordController,
                               hint: "รหัสผ่าน",
                               icon: Icons.lock_outline,
                               isPassword: true),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 10),
                           _buildTextField(
                               controller: _confirmPasswordController,
                               hint: "ยืนยันรหัสผ่าน",
                               icon: Icons.lock_outline,
                               isPassword: true),
-                          const SizedBox(height: 30),
+                          const SizedBox(height: 20),
                           SizedBox(
                             width: double.infinity,
                             height: 58,
@@ -128,8 +138,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                               ),
                               child: const Text("สร้างบัญชี",
                                   style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
                                       color: Colors.black87)),
                             ),
                           ),
