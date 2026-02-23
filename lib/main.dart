@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:regdogapp/screen/homepage.dart';
-
+import 'firebase_options.dart';
 // Import ไฟล์หน้าจอต่างๆ ของคุณ
 import 'firebase_options.dart'; 
 import 'package:regdogapp/screen/login_screen.dart'; 
@@ -87,7 +87,7 @@ class RegDogApp extends StatelessWidget {
         Locale('th', 'TH'),
       ],
       
-      home: const LoginScreen(), 
+      home: const Registerhavedog(), 
     );
   }
 }
