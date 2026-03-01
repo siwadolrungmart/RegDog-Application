@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:regdogapp/screen/register/registerbirthday.dart';
 // TODO: อย่าลืม Import ไฟล์ Registerhavedog ของคุณไว้ด้านบนสุดด้วยนะครับ
-// import 'package:regdogapp/screen/registerhavedog.dart'; 
+// import 'package:regdogapp/screen/registerhavedog.dart';
 
 class Registergender extends StatefulWidget {
-  const Registergender({super.key});
+  // ✅ 1. ต้องประกาศตัวแปรตรงนี้ เพื่อรับค่าชื่อน้องหมา
+  final String dogName;
+
+  // ✅ แก้ constructor ให้รับ this.dogName
+  const Registergender({super.key, required this.dogName});
 
   @override
   State<Registergender> createState() => _RegistergenderState();
@@ -16,7 +20,9 @@ class _RegistergenderState extends State<Registergender> {
 
   // กำหนดโทนสี Constants ให้อ้างอิงง่ายและโค้ด Clean
   static const Color _textDark = Color(0xFF212121);
-  static const Color _textLightBlue = Color(0xFF6B9BA3); // สีฟ้าเข้มสำหรับตัวหนังสือ
+  static const Color _textLightBlue = Color(
+    0xFF6B9BA3,
+  ); // สีฟ้าเข้มสำหรับตัวหนังสือ
   static const Color _borderColor = Color(0xFFBCE6EB); // สีขอบฟ้าอ่อน
   static const Color _bgPastelBlue = Color(0xFFC4E8EE); // สีพื้นปุ่มเพศเมีย
 
@@ -26,9 +32,6 @@ class _RegistergenderState extends State<Registergender> {
       backgroundColor: Colors.transparent, // โปร่งใสเพื่อโชว์พื้นหลัง
       body: Stack(
         children: [
-
-          
-
           // --- 2. เลเยอร์ Content หลัก ---
           SafeArea(
             child: Column(
@@ -63,7 +66,11 @@ class _RegistergenderState extends State<Registergender> {
                             height: 200,
                             fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.pets, size: 150, color: Colors.grey),
+                                const Icon(
+                                  Icons.pets,
+                                  size: 150,
+                                  color: Colors.grey,
+                                ),
                           ),
                           const SizedBox(height: 18),
 
@@ -92,8 +99,9 @@ class _RegistergenderState extends State<Registergender> {
                                   defaultBorderColor: _borderColor,
                                 ),
                               ),
-                              const SizedBox(width: 10), // ระยะห่าง 16px ตาม requirement
-                              
+                              const SizedBox(
+                                width: 10,
+                              ), // ระยะห่าง 16px ตาม requirement
                               // ปุ่มขวา: เพศเมีย
                               Expanded(
                                 child: _buildGenderButton(
@@ -101,12 +109,12 @@ class _RegistergenderState extends State<Registergender> {
                                   value: 'female',
                                   defaultBgColor: Colors.white,
                                   defaultTextColor: _textLightBlue,
-                                  defaultBorderColor: _borderColor, 
+                                  defaultBorderColor: _borderColor,
                                 ),
                               ),
                             ],
                           ),
-                          
+
                           const SizedBox(height: 40),
                         ],
                       ),
@@ -131,9 +139,11 @@ class _RegistergenderState extends State<Registergender> {
   }) {
     // เช็คว่าปุ่มนี้ถูกเลือกอยู่หรือไม่
     bool isSelected = _selectedGender == value;
-    
-    // Logic การเปลี่ยนสี (Highlight): 
-    Color currentBgColor = isSelected ? defaultBgColor : defaultBgColor.withOpacity(0.6);
+
+    // Logic การเปลี่ยนสี (Highlight):
+    Color currentBgColor = isSelected
+        ? defaultBgColor
+        : defaultBgColor.withOpacity(0.6);
     Color currentBorderColor = isSelected ? _textLightBlue : defaultBorderColor;
     double elevation = isSelected ? 8.0 : 0.0;
 
@@ -143,24 +153,28 @@ class _RegistergenderState extends State<Registergender> {
         setState(() {
           _selectedGender = value;
         });
-        
+
         debugPrint("ผู้ใช้เลือกเพศ: $value");
 
         // 2. หน่วงเวลา 0.3 วินาที ให้เห็นแอนิเมชันปุ่มสว่างขึ้น แล้วค่อยเปลี่ยนหน้า
         Future.delayed(const Duration(milliseconds: 300), () {
           // ตรวจสอบความปลอดภัยว่าหน้าจอยังเปิดอยู่หรือไม่ก่อนเปลี่ยนหน้า
-          if (!context.mounted) return; 
+          if (!context.mounted) return;
 
-          // 3. เปลี่ยนหน้าไปยัง Registerhavedog
-          Navigator.pushReplacement(
+          // 3. เปลี่ยนหน้าไปยังหน้าวันเกิด พร้อมส่งข้อมูลไป
+          Navigator.push(
             context,
             MaterialPageRoute(
-              // อย่าลืมตรวจสอบชื่อ Class ปลายทางให้ตรงกับไฟล์ของคุณนะครับ
-              builder: (context) => const Registerbirthday(), 
+              builder: (context) => Registerbirthday(
+                dogName:
+                    widget.dogName, // เอาชื่อน้องหมาที่รับมา ส่งต่อไปอีกทอด
+                dogGender:
+                    title, // ส่งเพศที่เพิ่งเลือกไป ('เพศผู้' หรือ 'เพศเมีย')
+              ),
             ),
           );
-        });
-      },
+        }); // ✅ ปิดวงเล็บ Future.delayed ตรงนี้ครับ
+      }, // ✅ ปิดวงเล็บ onTap ตรงนี้ครับ
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250), // ความเร็วในการเปลี่ยนสี
         curve: Curves.easeInOut,
@@ -187,7 +201,7 @@ class _RegistergenderState extends State<Registergender> {
             fontFamily: 'Inter',
             fontWeight: FontWeight.w600,
             fontSize: 14,
-            color: isSelected ? _textDark : defaultTextColor.withOpacity(0.8), 
+            color: isSelected ? _textDark : defaultTextColor.withOpacity(0.8),
           ),
         ),
       ),

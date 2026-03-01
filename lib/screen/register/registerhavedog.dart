@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:regdogapp/screen/homepage.dart';
 import 'package:regdogapp/screen/register/registerdogname.dart';
 
 class Registerhavedog extends StatelessWidget {
@@ -13,23 +14,9 @@ class Registerhavedog extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       // เปลี่ยนสีพื้นหลัง Scaffold เป็น transparent เพื่อให้เห็นรูปข้างหลังชัดเจน
-      // backgroundColor: Colors.transparent, 
+      // backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          // --- 1. เลเยอร์ Background (แก้ไขใหม่) ---
-          // Positioned.fill(
-          //   child: Image.asset(
-          //     // เปลี่ยน path ตรงนี้เป็นรูปที่คุณต้องการ
-          //     'assets/bg_watercolor.png', 
-          //     fit: BoxFit.cover, // ขยายเต็มจอโดยไม่เสียสัดส่วน
-          //     // Fallback สีขาวกรณีที่ยังไม่ได้ใส่รูปภาพเข้าโปรเจกต์ หรือ path ผิด
-          //     errorBuilder: (context, error, stackTrace) {
-          //        debugPrint("Error loading background image: $error");
-          //        return Container(color: Colors.white);
-          //     }, 
-          //   ),
-          // ),
-
           // --- 2. เลเยอร์ Content หลัก ---
           SafeArea(
             child: Column(
@@ -57,15 +44,19 @@ class Registerhavedog extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const SizedBox(height: 30),
-                          
+
                           // รูปการ์ตูนสุนัข
                           Image.asset(
                             'assets/dog-ping.png',
                             width: 200,
                             height: 200,
                             fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) => 
-                                const Icon(Icons.pets, size: 150, color: Colors.grey),
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(
+                                  Icons.pets,
+                                  size: 150,
+                                  color: Colors.grey,
+                                ),
                           ),
                           const SizedBox(height: 18),
 
@@ -86,9 +77,11 @@ class Registerhavedog extends StatelessWidget {
                             height: 45, // ความสูงมาตรฐานเพื่อให้กดง่าย
                             child: OutlinedButton(
                               style: OutlinedButton.styleFrom(
-                                backgroundColor: Colors.white.withOpacity(0.8), // เพิ่มความโปร่งใสให้ปุ่มนิดหน่อยเพื่อให้เข้ากับพื้นหลัง
+                                backgroundColor: Colors.white.withOpacity(
+                                  0.8,
+                                ), // เพิ่มความโปร่งใสให้ปุ่มนิดหน่อยเพื่อให้เข้ากับพื้นหลัง
                                 side: const BorderSide(
-                                  color: _primaryPastelBlue, 
+                                  color: _primaryPastelBlue,
                                   width: 1.5,
                                 ),
                                 shape: RoundedRectangleBorder(
@@ -98,12 +91,13 @@ class Registerhavedog extends StatelessWidget {
                               ),
                               onPressed: () {
                                 // TODO: ใส่ Logic สำหรับผู้ที่มีสุนัข
-                                 Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const Registerdogname(),
-                          ),
-                        );
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const Registerdogname(),
+                                  ),
+                                );
                               },
                               child: const Text(
                                 'ฉันมีสุนัข',
@@ -123,9 +117,11 @@ class Registerhavedog extends StatelessWidget {
                             height: 45, // ความสูงมาตรฐานเพื่อให้กดง่าย
                             child: OutlinedButton(
                               style: OutlinedButton.styleFrom(
-                                backgroundColor: Colors.white.withOpacity(0.8), // เพิ่มความโปร่งใสให้ปุ่มนิดหน่อยเพื่อให้เข้ากับพื้นหลัง
+                                backgroundColor: Colors.white.withOpacity(
+                                  0.8,
+                                ), // เพิ่มความโปร่งใสให้ปุ่มนิดหน่อยเพื่อให้เข้ากับพื้นหลัง
                                 side: const BorderSide(
-                                  color: _primaryPastelBlue, 
+                                  color: _primaryPastelBlue,
                                   width: 1.5,
                                 ),
                                 shape: RoundedRectangleBorder(
@@ -135,12 +131,7 @@ class Registerhavedog extends StatelessWidget {
                               ),
                               onPressed: () {
                                 // TODO: ใส่ Logic สำหรับผู้ที่มีสุนัข
-                                 Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const Registerdogname(),
-                          ),
-                        );
+                               
                               },
                               child: const Text(
                                 'ฉันไม่มีสุนัข',
@@ -153,9 +144,9 @@ class Registerhavedog extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          
+
                           // Bottom Padding เผื่อสำหรับจอที่มีขอบล่าง
-                          const SizedBox(height: 40), 
+                          const SizedBox(height: 40),
                         ],
                       ),
                     ),

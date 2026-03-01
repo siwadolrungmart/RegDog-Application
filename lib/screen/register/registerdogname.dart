@@ -29,7 +29,6 @@ class _RegisterdognameState extends State<Registerdogname> {
       backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-    
           SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,7 +95,6 @@ class _RegisterdognameState extends State<Registerdogname> {
                               ],
                             ),
                             child: TextField(
-                              
                               controller: _dogNameController,
 
                               decoration: InputDecoration(
@@ -140,10 +138,13 @@ class _RegisterdognameState extends State<Registerdogname> {
                               // ปุ่ม "ข้าม"
                               SizedBox(
                                 height: 40,
-                                
+
                                 child: OutlinedButton(
                                   style: OutlinedButton.styleFrom(
-                                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
                                     backgroundColor: Colors.white,
                                     side: const BorderSide(
                                       color: _btnYellow,
@@ -160,7 +161,7 @@ class _RegisterdognameState extends State<Registerdogname> {
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) =>
-                                            const Registergender(),
+                                            const Registergender(dogName: ''),
                                       ),
                                     );
                                   },
@@ -181,7 +182,10 @@ class _RegisterdognameState extends State<Registerdogname> {
                                 height: 40,
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
                                     backgroundColor: _btnYellow,
                                     foregroundColor:
                                         Colors.black54, // สีเอฟเฟกต์ตอนกด
@@ -191,16 +195,34 @@ class _RegisterdognameState extends State<Registerdogname> {
                                     ),
                                   ),
                                   onPressed: () {
-                                    // TODO: ส่งค่าชื่อน้องหมาไปหน้าถัดไป
-                                    Navigator.pushReplacement(
+                                    String name = _dogNameController.text
+                                        .trim();
+
+                                    if (name.isEmpty) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'กรุณากรอกชื่อสุนัข หรือกดข้ามค่ะ',
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    print(
+                                      "กำลังส่งชื่อน้องหมาไปหน้าถัดไป: $name",
+                                    ); // ขยับ print มาไว้ก่อนย้ายหน้า
+
+                                    Navigator.push(
+                                      // ใช้ push ธรรมดา
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) =>
-                                            const Registergender(),
+                                        builder: (context) => Registergender(
+                                          dogName: name,
+                                        ), // เอา const ออก และส่งค่า name ไป
                                       ),
-                                    );
-                                    print(
-                                      "ชื่อน้องหมาคือ: ${_dogNameController.text}",
                                     );
                                   },
                                   child: const Row(

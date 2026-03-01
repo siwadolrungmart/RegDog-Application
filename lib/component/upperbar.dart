@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+// ✅ 1. อย่าลืม Import ไฟล์หน้า DogListPage (แก้ path ให้ตรงกับโปรเจกต์คุณ)
+import 'package:regdogapp/screen/dog_list.dart'; 
 
 class HomeTopBar extends StatelessWidget {
   final VoidCallback? onMenuTap;
@@ -11,7 +13,7 @@ class HomeTopBar extends StatelessWidget {
     this.onMenuTap,
     this.onNotificationTap,
     this.onProfileTap,
-    this.showProfile = false, // ถ้าต้องการให้มีไอคอนโปรไฟล์ด้านขวาเพิ่ม
+    this.showProfile = false,
   });
 
   @override
@@ -23,7 +25,18 @@ class HomeTopBar extends StatelessWidget {
         children: [
           /// Left - Menu
           IconButton(
-            onPressed: onMenuTap,
+            // ✅ 2. แก้ไขตรง onPressed ให้สั่ง Navigator โดยตรง
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const DogListPage(),
+                ),
+              );
+              
+              // หากยังต้องการให้โค้ดภายนอกทำงานด้วย (ถ้ามี) ก็ใส่บรรทัดนี้เพิ่ม
+              if (onMenuTap != null) onMenuTap!();
+            },
             icon: const Icon(
               Icons.menu,
               size: 24,

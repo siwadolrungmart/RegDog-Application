@@ -1,8 +1,22 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:regdogapp/component/bar.dart';
+import 'package:regdogapp/screen/dog_list.dart';
+import 'package:regdogapp/service/dogdatabase_service.dart';
+// TODO: อย่าลืม Import ไฟล์ DatabaseService ของคุณเข้ามาด้วยนะครับ
+// import 'path_to_your_file/database_service.dart'; 
 
 class Registerbreed extends StatefulWidget {
-  const Registerbreed({super.key});
+  final String dogName;
+  final String dogGender;
+  final String dogBirthdate; // สมมติว่ามาในรูปแบบ "DD/MM/YYYY" เช่น "01/03/2026"
+
+  const Registerbreed({
+    super.key,
+    required this.dogName,
+    required this.dogGender,
+    required this.dogBirthdate,
+  });
 
   @override
   State<Registerbreed> createState() => _RegisterbreedState();
@@ -12,6 +26,7 @@ class _RegisterbreedState extends State<Registerbreed> {
   // ตัวแปรเก็บสายพันธุ์ที่เลือก
   String? _selectedBreed;
   int _currentIndex = 2; // ตั้งค่าเริ่มต้นที่ 2 (หน้าแรก)
+  
   // รายการสายพันธุ์สุนัข
   final List<String> _dogBreeds = [
     'ปอมเมอเรเนียน',
@@ -25,24 +40,31 @@ class _RegisterbreedState extends State<Registerbreed> {
   // สี Constants ตาม Design
   static const Color _bgOffWhite = Color(0xFFF6F6F6);
   static const Color _textDark = Color(0xFF212121);
-  static const Color _textLightBlue = Color(0xFF6B9BA3); // สีข้อความใน Dropdown
+  static const Color _textLightBlue = Color(0xFF6B9BA3); 
   static const Color _btnYellow = Color(0xFFFEF0B3);
-  static const Color _dropdownBg = Color(
-    0xFFBCE6EB,
-  ); // สีพื้นหลัง Dropdown (ฟ้าพาสเทล)
-  static const Color _dividerColor = Color(0xFF212121); // สีเส้นคั่น (ดำ)
+  static const Color _dropdownBg = Color(0xFFBCE6EB); 
+  static const Color _dividerColor = Color(0xFF212121); 
+
+  // ฟังก์ชันแปลง String เป็น DateTime
+  DateTime _parseDate(String dateStr) {
+    try {
+      // สมมติว่า dateStr คือ "01/03/2026" (วัน/เดือน/ปี)
+      List<String> parts = dateStr.split('/');
+      if (parts.length == 3) {
+        int day = int.parse(parts[0]);
+        int month = int.parse(parts[1]);
+        int year = int.parse(parts[2]);
+        return DateTime(year, month, day);
+      }
+      return DateTime.now(); // ถ้า Format ผิดพลาด ให้ใช้วันนี้แทน
+    } catch (e) {
+      return DateTime.now();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      bottomNavigationBar: CustomBottomNavBar(
-        selectedIndex: _currentIndex,
-        onItemTapped: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-      ),
       body: Stack(
         children: [
           // --- 2. เลเยอร์ Content หลัก ---
@@ -56,7 +78,7 @@ class _RegisterbreedState extends State<Registerbreed> {
                   child: IconButton(
                     icon: const Icon(Icons.arrow_back, color: _textDark),
                     onPressed: () {
-                      Navigator.pop(context); // TODO: Logic ย้อนกลับ
+                      Navigator.pop(context); 
                     },
                   ),
                 ),
@@ -74,7 +96,7 @@ class _RegisterbreedState extends State<Registerbreed> {
 
                           // รูปการ์ตูนสุนัข
                           Image.asset(
-                            'assets/dog-ping.png', // ตรวจสอบ path รูปให้ถูกต้อง
+                            'assets/dog-ping.png', 
                             width: 200,
                             height: 200,
                             fit: BoxFit.contain,
@@ -98,88 +120,51 @@ class _RegisterbreedState extends State<Registerbreed> {
                           ),
                           const SizedBox(height: 10),
 
-                          // --- 3. ช่องเลือกสายพันธุ์ (ใช้ M3 DropdownButtonFormField ล้วนๆ) ---
+                          // --- 3. ช่องเลือกสายพันธุ์ ---
                           DropdownButtonFormField<String>(
                             value: _selectedBreed,
-                            isExpanded:
-                                true, // ป้องกันปัญหา Text ยาวเกินแล้วพัง
-                            // ซ่อนไอคอนลูกศรเดิมของระบบ
+                            isExpanded: true, 
                             icon: const SizedBox.shrink(),
                             style: const TextStyle(
                               fontSize: 16,
-                              color: _textLightBlue, // สีข้อความเมื่อเลือกแล้ว
+                              color: _textLightBlue, 
                               fontFamily: 'Inter',
                               fontWeight: FontWeight.w500,
                             ),
                             decoration: InputDecoration(
-                              fillColor: _dropdownBg, // สีฟ้าพาสเทล
+                              fillColor: _dropdownBg, 
                               filled: true,
                               hintText: 'สายพันธุ์',
                               hintStyle: TextStyle(
                                 color: _textLightBlue.withOpacity(0.7),
                               ),
-
-                              // --- จัดการไอคอนด้านซ้าย (หน้าสุนัข) ---
                               prefixIcon: const Padding(
-                                padding: EdgeInsets.only(
-                                  left: 20.0,
-                                  right: 12.0,
-                                ),
-                                child: Icon(
-                                  Icons.pets,
-                                  color: _textLightBlue,
-                                  size: 24,
-                                ),
+                                padding: EdgeInsets.only(left: 20.0, right: 12.0),
+                                child: Icon(Icons.pets, color: _textLightBlue, size: 24),
                               ),
-                              prefixIconConstraints: const BoxConstraints(
-                                minWidth: 0,
-                                minHeight: 0,
-                              ),
-
-                              // --- จัดการส่วนด้านขวา (เส้นคั่น + ลูกศร) ---
+                              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
                               suffixIcon: SizedBox(
-                                width: 64, // กำหนดพื้นที่ให้พอดีกับเส้นและไอคอน
+                                width: 64, 
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
-                                    // เส้นคั่น
-                                    Container(
-                                      width: 1.5,
-                                      height: 24,
-                                      color: _dividerColor, // สีดำ
-                                    ),
+                                    Container(width: 1.5, height: 24, color: _dividerColor),
                                     const SizedBox(width: 8),
-                                    // ไอคอนลูกศร
-                                    const Icon(
-                                      Icons.keyboard_arrow_down_rounded,
-                                      color: Colors.white,
-                                      size: 32,
-                                    ),
+                                    const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 32),
                                     const SizedBox(width: 16),
                                   ],
                                 ),
                               ),
-
-                              // --- จัดการขอบโค้งแบบ Pill ---
-                              contentPadding: const EdgeInsets.symmetric(
-                                vertical: 16,
-                              ),
+                              contentPadding: const EdgeInsets.symmetric(vertical: 16),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(50),
                                 borderSide: BorderSide.none,
                               ),
                             ),
-
-                            // ข้อมูลใน Dropdown
                             items: _dogBreeds.map((String breed) {
                               return DropdownMenuItem<String>(
                                 value: breed,
-                                child: Text(
-                                  breed,
-                                  style: const TextStyle(
-                                    color: _textDark,
-                                  ), // สีตัวเลือกเป็นสีดำให้อ่านง่ายตอนกดเด้งขึ้นมา
-                                ),
+                                child: Text(breed, style: const TextStyle(color: _textDark)),
                               );
                             }).toList(),
                             onChanged: (String? newValue) {
@@ -198,37 +183,7 @@ class _RegisterbreedState extends State<Registerbreed> {
                               // ปุ่ม "ข้าม"
                               SizedBox(
                                 height: 40,
-                                child: OutlinedButton(
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 10,
-                                    ),
-                                    backgroundColor: Colors.white.withOpacity(
-                                      0.5,
-                                    ),
-                                    side: const BorderSide(
-                                      color: _btnYellow,
-                                      width: 2,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(24),
-                                    ),
-                                    elevation: 0,
-                                  ),
-                                  onPressed: () {
-                                    // TODO: ใส่ Logic ข้าม
-                                    debugPrint("กดข้าม");
-                                  },
-                                  child: const Text(
-                                    'ข้าม',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      color: _textDark,
-                                    ),
-                                  ),
-                                ),
+                               
                               ),
                               const SizedBox(width: 10),
 
@@ -237,40 +192,81 @@ class _RegisterbreedState extends State<Registerbreed> {
                                 height: 40,
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 10,
-                                    ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                     backgroundColor: _btnYellow,
                                     foregroundColor: Colors.black54,
                                     elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(24),
-                                    ),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                                   ),
-                                  onPressed: () {
-                                    // TODO: ส่งค่าสายพันธุ์ไปหน้าถัดไป
-                                    debugPrint(
-                                      "สายพันธุ์ที่เลือก: $_selectedBreed",
+                                  onPressed: () async {
+                                    // 1. เช็คว่าเลือกสายพันธุ์หรือยัง
+                                    if (_selectedBreed == null) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('กรุณาเลือกสายพันธุ์น้องหมาด้วยนะคะ')),
+                                      );
+                                      return;
+                                    }
+
+                                    // แสดง Loading 
+                                    showDialog(
+                                      context: context,
+                                      barrierDismissible: false,
+                                      builder: (context) => const Center(
+                                        child: CircularProgressIndicator(color: _btnYellow),
+                                      ),
                                     );
+
+                                    try {
+                                      // 2. แปลง String เป็น DateTime
+                                      DateTime parsedBirthDate = _parseDate(widget.dogBirthdate);
+
+                                      // 3. 🐾 เรียกใช้ DatabaseService แทนการยิงตรงๆ 🐾
+                                      // ต้องแน่ใจว่า import class DatabaseService มาแล้วด้านบน
+                                      bool isSuccess = await DatabaseService().addDog(
+                                        name: widget.dogName,
+                                        gender: widget.dogGender,
+                                        breed: _selectedBreed!,
+                                        birthDate: parsedBirthDate,
+                                      );
+
+                                      // ปิด Loading
+                                      if (!mounted) return;
+                                      Navigator.pop(context);
+
+                                      if (isSuccess) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('บันทึกข้อมูลน้องหมาสำเร็จแล้ว!')),
+                                        );
+                                        // TODO: ย้ายไปหน้าถัดไป
+                                         Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const DogListPage(), // เปลี่ยนเป็นชื่อคลาสหน้าเพิ่มสุนัขของคุณ
+          ),
+        );
+                                      } else {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('เกิดข้อผิดพลาดในการบันทึกฐานข้อมูล')),
+                                        );
+                                      }
+
+                                    } catch (e) {
+                                      Navigator.pop(context);
+                                      debugPrint("Error saving dog: $e");
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
+                                      );
+                                    }
                                   },
                                   child: const Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
-                                        'ต่อไป',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                          color: _textDark,
-                                        ),
+                                        'บันทึก',
+                                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: _textDark),
                                       ),
                                       SizedBox(width: 4),
-                                      Icon(
-                                        Icons.arrow_forward,
-                                        size: 20,
-                                        color: _textDark,
-                                      ),
+                                      Icon(Icons.arrow_forward, size: 20, color: _textDark),
                                     ],
                                   ),
                                 ),

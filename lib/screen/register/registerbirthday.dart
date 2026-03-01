@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:regdogapp/screen/register/registerbreed.dart';
 
 class Registerbirthday extends StatefulWidget {
-  const Registerbirthday({super.key});
+  final String dogName; // มีอยู่แล้ว
+  final String dogGender; // ✅ เพิ่มบรรทัดนี้เข้าไปครับ
+
+  const Registerbirthday({
+    super.key,
+    required this.dogName,
+    required this.dogGender, // ✅ เพิ่มบรรทัดนี้ใน Constructor ด้วย
+  });
 
   @override
   State<Registerbirthday> createState() => _RegisterbirthdayState();
@@ -33,25 +41,25 @@ class _RegisterbirthdayState extends State<Registerbirthday> {
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
       locale: const Locale('th', 'TH'), // ปฏิทินภาษาไทย
-      
       // 🌟 1. บังคับให้ใช้โหมดปฏิทินเท่านั้น (ซ่อนไอคอนปากกา)
-      initialEntryMode: DatePickerEntryMode.calendarOnly, 
-      
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
+
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
               primary: Color(0xFFFDE894), // สี Header (เหลืองพาสเทล)
-              onPrimary: _textDark,       // สีตัวอักษรบน Header
-              onSurface: _textDark,       // สีตัวเลขวันที่ในปฏิทิน
+              onPrimary: _textDark, // สีตัวอักษรบน Header
+              onSurface: _textDark, // สีตัวเลขวันที่ในปฏิทิน
             ),
-            
+
             // 🌟 2. เปลี่ยนสีปุ่ม "ตกลง" (OK) และ "ยกเลิก" (Cancel) เป็นสีดำ
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
                 foregroundColor: Colors.black, // กำหนดสีตัวอักษรปุ่มที่นี่
                 textStyle: const TextStyle(
-                  fontWeight: FontWeight.w600, // ปรับให้ตัวหนาขึ้นนิดนึงให้อ่านง่าย
+                  fontWeight:
+                      FontWeight.w600, // ปรับให้ตัวหนาขึ้นนิดนึงให้อ่านง่าย
                   fontFamily: 'Inter',
                 ),
               ),
@@ -77,7 +85,6 @@ class _RegisterbirthdayState extends State<Registerbirthday> {
       backgroundColor: Colors.transparent, // โปร่งใสเพื่อใช้พื้นหลัง Stack
       body: Stack(
         children: [
-          
           // --- 2. เลเยอร์ Content หลัก ---
           SafeArea(
             child: Column(
@@ -112,7 +119,11 @@ class _RegisterbirthdayState extends State<Registerbirthday> {
                             height: 200,
                             fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.pets, size: 150, color: Colors.black12),
+                                const Icon(
+                                  Icons.pets,
+                                  size: 150,
+                                  color: Colors.black12,
+                                ),
                           ),
                           const SizedBox(height: 18),
 
@@ -136,24 +147,40 @@ class _RegisterbirthdayState extends State<Registerbirthday> {
                             ),
                             child: TextField(
                               controller: _dateController,
-                              readOnly: true, // ทำให้พิมพ์เองไม่ได้ ต้องจิ้มเลือกปฏิทินเท่านั้น
-                              onTap: () => _selectDate(context), // เด้ง DatePicker เมื่อกด
+                              readOnly:
+                                  true, // ทำให้พิมพ์เองไม่ได้ ต้องจิ้มเลือกปฏิทินเท่านั้น
+                              onTap: () => _selectDate(
+                                context,
+                              ), // เด้ง DatePicker เมื่อกด
                               style: const TextStyle(
                                 fontSize: 16,
                                 color: _textDark,
                               ),
                               decoration: InputDecoration(
                                 hintText: 'วัน/เดือน/ปี',
-                                hintStyle: const TextStyle(color: Colors.black38),
-                                suffixIcon: const Icon(Icons.calendar_month, color: Colors.black54),
-                                contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                                hintStyle: const TextStyle(
+                                  color: Colors.black38,
+                                ),
+                                suffixIcon: const Icon(
+                                  Icons.calendar_month,
+                                  color: Colors.black54,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                  horizontal: 16,
+                                ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(16),
-                                  borderSide: const BorderSide(color: _borderColor),
+                                  borderSide: const BorderSide(
+                                    color: _borderColor,
+                                  ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(16),
-                                  borderSide: const BorderSide(color: _textDark, width: 1.5),
+                                  borderSide: const BorderSide(
+                                    color: _textDark,
+                                    width: 1.5,
+                                  ),
                                 ),
                               ),
                             ),
@@ -169,17 +196,33 @@ class _RegisterbirthdayState extends State<Registerbirthday> {
                                 height: 40,
                                 child: OutlinedButton(
                                   style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
                                     backgroundColor: Colors.white,
-                                    side: const BorderSide(color: _btnYellow, width: 1.5),
+                                    side: const BorderSide(
+                                      color: _btnYellow,
+                                      width: 1.5,
+                                    ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(24),
                                     ),
                                     elevation: 0,
                                   ),
                                   onPressed: () {
-                                    // TODO: ใส่ Logic ข้าม
-                                    debugPrint("ข้ามหน้าวันเกิด");
+                                    // ✅ ส่งค่าเท่าที่มีไปหน้าถัดไป (วันเกิดส่งเป็นค่าว่างหรือ "ไม่ระบุ")
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => Registerbreed(
+                                          // สมมติว่าหน้าถัดไปชื่อนี้
+                                          dogName: widget.dogName,
+                                          dogGender: widget.dogGender,
+                                          dogBirthdate: "ไม่ระบุ",
+                                        ),
+                                      ),
+                                    );
                                   },
                                   child: const Text(
                                     'ข้าม',
@@ -192,24 +235,50 @@ class _RegisterbirthdayState extends State<Registerbirthday> {
                                 ),
                               ),
                               const SizedBox(width: 10), // ระยะห่างระหว่างปุ่ม
-
                               // ปุ่ม ต่อไป
                               SizedBox(
                                 height: 40,
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
                                     backgroundColor: _btnYellow,
-                                    foregroundColor: Colors.black54, // เอฟเฟกต์สีตอนกด
+                                    foregroundColor:
+                                        Colors.black54, // เอฟเฟกต์สีตอนกด
                                     elevation: 0,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(24),
                                     ),
                                   ),
                                   onPressed: () {
-                                    // TODO: ส่งค่าวันเกิดไปหน้าถัดไป
-                                    debugPrint("วันเกิดที่เลือก: ${_dateController.text}");
+                                    if (_dateController.text.isEmpty) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'กรุณาเลือกวันเกิดน้องหมาด้วยนะคะ',
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    // ✅ ส่งข้อมูลครบทั้ง 3 อย่างไปหน้าถัดไป
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => Registerbreed(
+                                          dogName: widget.dogName,
+                                          dogGender: widget.dogGender,
+                                          dogBirthdate: _dateController.text,
+                                        ),
+                                      ),
+                                    );
                                   },
+
                                   child: const Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -222,7 +291,11 @@ class _RegisterbirthdayState extends State<Registerbirthday> {
                                         ),
                                       ),
                                       SizedBox(width: 4),
-                                      Icon(Icons.arrow_forward, size: 20, color: _textDark),
+                                      Icon(
+                                        Icons.arrow_forward,
+                                        size: 20,
+                                        color: _textDark,
+                                      ),
                                     ],
                                   ),
                                 ),
