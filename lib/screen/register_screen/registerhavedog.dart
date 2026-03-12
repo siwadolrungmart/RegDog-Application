@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:regdogapp/screen/homepage.dart';
-import 'package:regdogapp/screen/register/registerdogname.dart';
+import 'package:regdogapp/screen/navbar_screen/home_screen.dart';
+import 'package:regdogapp/screen/register_screen/registerdogname.dart';
 
 class Registerhavedog extends StatelessWidget {
   const Registerhavedog({super.key});

@@ -44,6 +44,7 @@ dependencies:
   shadcn_ui: ^0.46.1
   fl_chart: ^1.1.1
   cloud_firestore: ^6.1.2
+  provider: ^6.1.5+1
 dev_dependencies:
   flutter_test:
     sdk: flutter

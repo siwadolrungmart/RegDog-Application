@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:regdogapp/screen/register/registerbreed.dart';
+import 'package:regdogapp/screen/register_screen/registerbreed.dart';
 
 class Registerbirthday extends StatefulWidget {
   final String dogName; // มีอยู่แล้ว

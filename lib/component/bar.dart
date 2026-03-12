@@ -13,10 +13,10 @@ class CustomBottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 35), // ปรับระยะห่างขอบล่างและด้านข้าง
+      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 35),
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFC0E4F6), // สีฟ้าอ่อนพื้นหลัง
+        color: const Color(0xFFC0E4F6),
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
@@ -29,36 +29,11 @@ class CustomBottomNavBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildNavItem(
-            icon: Icons.qr_code,
-            label: 'คิวอาร์โค้ด',
-            index: 0,
-            isActive: selectedIndex == 0,
-          ),
-          _buildNavItem(
-            icon: Icons.calendar_today_outlined,
-            label: 'ปฏิทิน',
-            index: 1,
-            isActive: selectedIndex == 1,
-          ),
-          _buildNavItem(
-            icon: Icons.home_outlined,
-            label: 'หน้าแรก',
-            index: 2,
-            isActive: selectedIndex == 2,
-          ),
-          _buildNavItem(
-            icon: Icons.location_on_outlined,
-            label: 'สถานที่',
-            index: 3,
-            isActive: selectedIndex == 3,
-          ),
-          _buildNavItem(
-            icon: Icons.pets_outlined, // ใช้ไอคอนสัตว์เลี้ยงให้ตรงกับภาพ
-            label: 'โปรไฟล์',
-            index: 4,
-            isActive: selectedIndex == 4,
-          ),
+          _buildNavItem(icon: Icons.qr_code, label: 'คิวอาร์โค้ด', index: 0, isActive: selectedIndex == 0),
+          _buildNavItem(icon: Icons.calendar_today_outlined, label: 'ปฏิทิน', index: 1, isActive: selectedIndex == 1),
+          _buildNavItem(icon: Icons.home_outlined, label: 'หน้าแรก', index: 2, isActive: selectedIndex == 2),
+          _buildNavItem(icon: Icons.location_on_outlined, label: 'สถานที่', index: 3, isActive: selectedIndex == 3),
+          _buildNavItem(icon: Icons.pets_outlined, label: 'โปรไฟล์', index: 4, isActive: selectedIndex == 4),
         ],
       ),
     );
@@ -79,11 +54,10 @@ class CustomBottomNavBar extends StatelessWidget {
             ? const EdgeInsets.symmetric(horizontal: 16, vertical: 8)
             : const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFFFFECA5) : Colors.transparent, // สีเหลืองเมื่อ Active
+          color: isActive ? const Color(0xFFFFECA5) : Colors.transparent,
           borderRadius: BorderRadius.circular(100),
         ),
         child: isActive
-            // แบบ Active: ไอคอนและข้อความเรียงแนวนอน
             ? Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -91,15 +65,10 @@ class CustomBottomNavBar extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text(
                     label,
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: const TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 ],
               )
-            // แบบ Inactive: ไอคอนและข้อความเรียงแนวตั้ง
             : Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -107,11 +76,7 @@ class CustomBottomNavBar extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     label,
-                    style: const TextStyle(
-                      color: Colors.black87,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w400,
-                    ),
+                    style: const TextStyle(color: Colors.black87, fontSize: 10, fontWeight: FontWeight.w400),
                   ),
                 ],
               ),
