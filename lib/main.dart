@@ -85,7 +85,7 @@ class RegDogApp extends StatelessWidget {
       supportedLocales: const [
         Locale('th', 'TH'),
       ],
-      home: const CalendarPage(),
+      home: const LoginScreen(),
     );
   }
 }
