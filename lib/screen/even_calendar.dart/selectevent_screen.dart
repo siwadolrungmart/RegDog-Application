@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:regdogapp/component/upperbar.dart';
+import 'package:regdogapp/component/bar.dart'; 
 import 'package:regdogapp/screen/dog_list.dart';
+import 'package:regdogapp/screen/even_calendar.dart/medicineevent_screen.dart';
+
+// Import หน้าบันทึกต่างๆ 
 import 'package:regdogapp/screen/even_calendar.dart/playevent_screen.dart';
 import 'package:regdogapp/screen/even_calendar.dart/symptomevent_screen.dart';
 import 'package:regdogapp/screen/even_calendar.dart/trainevent_screen.dart';
@@ -8,30 +13,36 @@ import 'package:regdogapp/screen/even_calendar.dart/vaccinevent_screen.dart';
 import 'package:regdogapp/screen/even_calendar.dart/vetvisitevent_screen.dart';
 import 'package:regdogapp/screen/even_calendar.dart/walkevent_screen.dart';
 
-// TODO: อย่าลืม Import ไฟล์หน้าเหล่านี้ให้ครบถ้วนนะครับ
-// import 'package:regdogapp/screen/add_walk_event_page.dart';
-// import 'package:regdogapp/screen/add_play_event_page.dart';
-// import 'package:regdogapp/screen/add_train_event_page.dart';
-// import 'package:regdogapp/screen/add_symptom_event_page.dart';
-// import 'package:regdogapp/screen/add_vaccine_event_page.dart';
-// import 'package:regdogapp/screen/add_vet_event_page.dart';
+class EventCategoryPage extends StatefulWidget {
+  // รับค่าวันที่เลือกมาจากหน้า Calendar
+  final DateTime selectedDate; 
+  
+  const EventCategoryPage({super.key, required this.selectedDate});
 
-// ────────────────────────────────────────────────
-// 1. Main Component: EventCategoryPage
-// ────────────────────────────────────────────────
-class EventCategoryPage extends StatelessWidget {
-  const EventCategoryPage({super.key});
+  @override
+  State<EventCategoryPage> createState() => _EventCategoryPageState();
+}
+
+class _EventCategoryPageState extends State<EventCategoryPage> {
+  int _currentIndex = 1; 
 
   @override
   Widget build(BuildContext context) {
-    // 🌟 1. นำ Scaffold มาครอบไว้ชั้นนอกสุด เพื่อลบเส้นใต้สีเหลืองและตั้งค่าพื้นฐานให้หน้าจอ
-    return Scaffold( 
+    return Scaffold(
+      bottomNavigationBar: CustomBottomNavBar(
+        selectedIndex: _currentIndex,
+        onItemTapped: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+      ),
       body: SafeArea(
-        child: Container(
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch, // ยืดเต็มความกว้าง
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // HomeTopBar ติดขอบบนสุด
               HomeTopBar(
                 showProfile: true,
                 onMenuTap: () {
@@ -44,88 +55,119 @@ class EventCategoryPage extends StatelessWidget {
                 onProfileTap: () => debugPrint("Profile tapped"),
               ),
 
-              // การ์ดใหญ่ ไม่มี margin บน (ติดกับ TopBar)
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Container(
-                    width: double.infinity, // กว้างเต็มหน้าจอ
-                    height: 710,
-                    margin: const EdgeInsets.fromLTRB(0, 0, 0, 0), // ขอบบน = 0 เพื่อติด TopBar
-                    padding: const EdgeInsets.fromLTRB(15, 15, 15, 0),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.25),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
+              Container(
+                width: double.infinity,
+                constraints: const BoxConstraints(
+                  minHeight: 690, 
+                ),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.all(Radius.circular(15)), 
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, -1),
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        // Header "เลือกประเภทเพื่อบันทึก" + ปุ่มย้อน
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          child: Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.arrow_back, color: Colors.black87),
-                                onPressed: () {
-                                  if (Navigator.canPop(context)) {
-                                    Navigator.pop(context);
-                                  }
-                                },
-                              ),
-                              const SizedBox(width: 60),
-                              const Text(
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                        Expanded(
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 48), 
+                              child: Text(
                                 "เลือกประเภทเพื่อบันทึก",
-                                style: TextStyle(
-                                  fontSize: 16,
+                                style: GoogleFonts.inter(
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.black87,
                                 ),
                               ),
-                            ],
+                            ),
                           ),
                         ),
-
-                        // ส่วนเนื้อหาอื่น ๆ (CategorySection ทั้งหมด)
-                        // เอา const ออก และเพิ่ม 'page' เข้าไป
-                        CategorySection(
-                          title: "กิจกรรม",
-                          items: const [
-                            {'label': 'เดิน', 'icon': Icons.pets, 'page': AddWalkEventPage()},
-                            {'label': 'เวลาเล่น', 'icon': Icons.sports_volleyball, 'page': AddPlayEventPage()},
-                            {'label': 'ฝึก', 'icon': Icons.assignment, 'page': AddTrainEventPage()},
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-
-                        CategorySection(
-                          title: "สุขภาพ",
-                          items: const [
-                            {'label': 'อาการ', 'icon': Icons.medical_information, 'page': AddSymptomEventPage()},
-                            {'label': 'วัคซีน', 'icon': Icons.vaccines, 'page': AddVaccineEventPage()},
-                            {'label': 'ยา', 'icon': Icons.medication, 'page': null}, // ยังไม่มีหน้าปลายทาง ให้ใส่ null ไว้ก่อน
-                            {'label': 'พบสัตวแพทย์', 'icon': Icons.local_hospital, 'page': AddVetEventPage()},
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-
-                        CategorySection(
-                          title: "ค่าใช้จ่าย",
-                          items: const [
-                            {'label': 'ค่าใช้จ่าย', 'icon': Icons.payments, 'page': null}, // ยังไม่มีหน้าปลายทาง ให้ใส่ null ไว้ก่อน
-                          ],
-                        ),
-                        const SizedBox(height: 32),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 5),
+
+                    // --- หมวดหมู่กิจกรรม ---
+                    CategorySection(
+                      title: "กิจกรรม",
+                      titleIcon: Icons.bolt, // 🟢 เปลี่ยนเป็นสายฟ้า สื่อถึงพลังงาน/กิจกรรม
+                      iconColor: const Color(0xFF2E86C1), // 🟢 สีน้ำเงิน
+                      items: [
+                        {
+                          'label': 'เดิน', 
+                          'icon': Icons.pets, 
+                          'page': AddWalkEventPage(selectedDateFromCalendar: widget.selectedDate)
+                        },
+                        {
+                          'label': 'เวลาเล่น', 
+                          'icon': Icons.sports_volleyball, 
+                          'page': AddPlayEventPage(selectedDateFromCalendar: widget.selectedDate)
+                        },
+                        {
+                          'label': 'ฝึก', 
+                          'icon': Icons.assignment, 
+                          'page': AddTrainEventPage(selectedDateFromCalendar: widget.selectedDate)
+                        },
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+
+                    // --- หมวดหมู่สุขภาพ ---
+                    CategorySection(
+                      title: "สุขภาพ",
+                      titleIcon: Icons.health_and_safety, 
+                      iconColor: const Color(0xFF2E86C1), // 🟢 สีน้ำเงิน
+                      items: [
+                        {
+                          'label': 'อาการ', 
+                          'icon': Icons.note_alt_outlined, 
+                          'page': AddSymptomEventPage(selectedDateFromCalendar: widget.selectedDate)
+                        },
+                        {
+                          'label': 'วัคซีน', 
+                          'icon': Icons.vaccines, 
+                          'page': AddVaccineEventPage(selectedDateFromCalendar: widget.selectedDate)
+                        },
+                        {
+                          'label': 'ยา', 
+                          'icon': Icons.medication, 
+                          'page': AddMedicineEventPage(selectedDateFromCalendar: widget.selectedDate)
+                        },
+                        {
+                          'label': 'พบสัตวแพทย์', 
+                          'icon': Icons.domain, 
+                          'page': AddVetVisitEventPage(selectedDateFromCalendar: widget.selectedDate)
+                        },
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+
+                    // --- หมวดหมู่ค่าใช้จ่าย ---
+                    CategorySection(
+                      title: "ค่าใช้จ่าย",
+                      titleIcon: Icons.payments, // 🟢 เปลี่ยนให้ตรงกับไอคอนด้านล่าง
+                      iconColor: const Color(0xFF2E86C1), // 🟢 สีน้ำเงิน
+                      items: const [
+                        {'label': 'ค่าใช้จ่าย', 'icon': Icons.payments, 'page': null},
+                      ],
+                    ),
+
+                    const SizedBox(height: 25), 
+                    const SizedBox(height: 100), 
+                  ],
                 ),
               ),
             ],
@@ -136,16 +178,17 @@ class EventCategoryPage extends StatelessWidget {
   }
 }
 
-// ────────────────────────────────────────────────
-// 2. Section Component: CategorySection
-// ────────────────────────────────────────────────
 class CategorySection extends StatelessWidget {
   final String title;
+  final IconData titleIcon; 
+  final Color iconColor;    
   final List<Map<String, dynamic>> items;
 
   const CategorySection({
     super.key,
     required this.title,
+    required this.titleIcon,
+    required this.iconColor,
     required this.items,
   });
 
@@ -154,15 +197,22 @@ class CategorySection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Colors.black87,
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(titleIcon, color: iconColor, size: 20), // ปรับขนาดไอคอนขึ้นนิดนึงให้สมดุล
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: GoogleFonts.inter(
+                fontSize: 16, 
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 8), 
+        const SizedBox(height: 12), 
         
         GridView.builder(
           padding: EdgeInsets.zero, 
@@ -181,20 +231,14 @@ class CategorySection extends StatelessWidget {
               label: item['label'] as String,
               icon: item['icon'] as IconData,
               onTap: () {
-                debugPrint('Tapped on ${item['label']}');
-                
-                // 🌟 ตรวจสอบว่ามีหน้าปลายทางหรือไม่ หากมีให้ทำการเปลี่ยนหน้า
                 if (item['page'] != null) {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => item['page'] as Widget,
-                    ),
+                    MaterialPageRoute(builder: (context) => item['page'] as Widget),
                   );
                 } else {
-                  // แสดงแจ้งเตือนกรณีที่ยังไม่ได้สร้างหน้า
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('หน้านี้ยังไม่พร้อมใช้งานครับ')),
+                    const SnackBar(content: Text('หน้านี้ยังไม่พร้อมใช้งานครับ')),
                   );
                 }
               },
@@ -206,9 +250,6 @@ class CategorySection extends StatelessWidget {
   }
 }
 
-// ────────────────────────────────────────────────
-// 3. Button Component: CategoryButton
-// ────────────────────────────────────────────────
 class CategoryButton extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -256,9 +297,9 @@ class CategoryButton extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               label,
-              style: const TextStyle(
-                fontSize:   12,
-                color: Color(0xFF75A4B2),
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                color: const Color(0xFF75A4B2),
                 fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,

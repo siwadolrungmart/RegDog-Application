@@ -1,8 +1,8 @@
 // places_screen.dart
 import 'package:flutter/material.dart';
 
-class PlacesScreen extends StatelessWidget {
-  const PlacesScreen({super.key});
+class PlacesPage extends StatelessWidget {
+  const PlacesPage({super.key});
 
   @override
   Widget build(BuildContext context) {

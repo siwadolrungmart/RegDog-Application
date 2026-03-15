@@ -1,519 +1,434 @@
+import 'dart:io'; 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart'; 
+import 'package:image_picker/image_picker.dart'; 
+import 'package:provider/provider.dart';
+
 import 'package:regdogapp/component/upperbar.dart';
 import 'package:regdogapp/screen/dog_list.dart';
-
-// 🌟 1. Import Component ที่เราสร้างไว้เข้ามา (เช็คที่อยู่โฟลเดอร์ให้ถูกต้อง)
-import 'package:regdogapp/component/duration_picker.dart'; 
-import 'package:regdogapp/component/distance_picker.dart';
+import 'package:regdogapp/component/duration_picker.dart';
+import 'package:regdogapp/component/event_settings.dart';
+import 'package:regdogapp/service/notification_service.dart'; 
+import 'package:regdogapp/providers/current_dog_provider.dart';
 
 class AddTrainEventPage extends StatefulWidget {
-  const AddTrainEventPage({super.key});
+  final DateTime selectedDateFromCalendar;
+  final String? eventId; 
+  final Map<String, dynamic>? eventData; 
+
+  const AddTrainEventPage({
+    super.key,
+    required this.selectedDateFromCalendar,
+    this.eventId,
+    this.eventData,
+  });
 
   @override
-  State<AddTrainEventPage> createState() => _AddWalkEventPageState();
+  State<AddTrainEventPage> createState() => _AddTrainEventPageState();
 }
 
-class _AddWalkEventPageState extends State<AddTrainEventPage> {
-  // 🌟 2. อัปเดตตัวแปรเก็บค่า
-  TimeOfDay _selectedTime = const TimeOfDay(hour: 12, minute: 1);
-  String _selectedReminder = "ทุกวัน";
+class _AddTrainEventPageState extends State<AddTrainEventPage> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   
-  // เปลี่ยนจาก String เป็นประเภทที่ถูกต้อง และใช้ ? เพื่อให้เริ่มต้นเป็นค่าว่างได้
+  // 🟢 เปลี่ยนชื่อ Default เป็น "ฝึก"
+  final TextEditingController _nameController = TextEditingController(text: "ฝึก");
+  final TextEditingController _noteController = TextEditingController();
+  
+  TimeOfDay _selectedTime = TimeOfDay.now(); 
   Duration? _selectedDuration;
-  double? _selectedDistance;
 
-  // ฟังก์ชันช่วยจัดรูปแบบตัวอักษรของเวลาที่เลือก
-  String get _formattedDuration {
-    if (_selectedDuration == null) return "เลือกเวลา";
-    String hours = _selectedDuration!.inHours.toString();
-    String minutes = _selectedDuration!.inMinutes.remainder(60).toString().padLeft(2, '0');
-    return "$hours:$minutes ชม.";
+  int? _selectedReminder; 
+  RecurrenceData _recurrenceData = RecurrenceData(
+    repeatType: "none", 
+    interval: 1, 
+    weeklyDays: [], 
+    monthlyMode: 'dayOfMonth',
+  );
+
+  final List<File> _selectedLocalImages = []; 
+  List<String> _existingImageUrls = []; 
+  final List<String> _deletedImageUrls = []; 
+  
+  final ImagePicker _picker = ImagePicker();
+
+  String get _formattedDuration => _selectedDuration == null ? "เลือกเวลา" : "${_selectedDuration!.inHours}:${(_selectedDuration!.inMinutes % 60).toString().padLeft(2, '0')} ชม.";
+  
+  String _getThaiDate(DateTime date) {
+    const List<String> thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    return "${date.day} ${thaiMonths[date.month - 1]} ${date.year }";
   }
 
-  // ฟังก์ชันช่วยจัดรูปแบบตัวอักษรของระยะทางที่เลือก
-  String get _formattedDistance {
-    if (_selectedDistance == null) return "เลือกระยะทาง";
-    return "${_selectedDistance!.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '')} กม.";
+  @override
+  void initState() {
+    super.initState();
+    if (widget.eventData != null) {
+      final data = widget.eventData!;
+      
+      _nameController.text = data['name'] ?? "ฝึก";
+      _noteController.text = data['note'] ?? "";
+      
+      if (data['images'] != null) {
+        _existingImageUrls = List<String>.from(data['images']);
+      }
+
+      if (data['start_time'] != null) {
+        DateTime? start;
+        if (data['start_time'] is Timestamp) start = (data['start_time'] as Timestamp).toDate();
+        else if (data['start_time'] is String) start = DateTime.tryParse(data['start_time']);
+        if (start != null) _selectedTime = TimeOfDay(hour: start.hour, minute: start.minute);
+      }
+      
+      if (data['duration_minutes'] != null) _selectedDuration = Duration(minutes: (data['duration_minutes'] as num).toInt());
+      
+      _selectedReminder = data['reminder_offset_minutes'] as int?;
+      
+      if (data['recurrence'] != null) {
+        var rec = data['recurrence'];
+        DateTime? parsedEndDate;
+        if (rec['end_date'] != null) {
+          if (rec['end_date'] is Timestamp) parsedEndDate = (rec['end_date'] as Timestamp).toDate();
+          else if (rec['end_date'] is String) parsedEndDate = DateTime.tryParse(rec['end_date']);
+        }
+        _recurrenceData = RecurrenceData(
+          repeatType: rec['type'] ?? "none", interval: rec['interval'] ?? 1,
+          weeklyDays: List<int>.from(rec['days_of_week'] ?? []),
+          monthlyMode: rec['monthly_mode'] ?? 'dayOfMonth',
+          endDate: parsedEndDate, count: rec['count'],
+        );
+      }
+    }
+  }
+
+  int get _totalImageCount => _existingImageUrls.length + _selectedLocalImages.length;
+
+  Future<void> _pickImage() async {
+    if (_totalImageCount >= 4) {
+      _showErrorSnackBar("เพิ่มรูปภาพได้สูงสุด 4 รูปเท่านั้น");
+      return;
+    }
+
+    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      File file = File(pickedFile.path);
+      double fileSizeInMB = file.lengthSync() / (1024 * 1024);
+
+      if (fileSizeInMB > 5.0) {
+        _showErrorSnackBar("ขนาดรูปภาพเกิน 5 MB (ไฟล์นี้ขนาด ${fileSizeInMB.toStringAsFixed(2)} MB)");
+        return;
+      }
+      setState(() => _selectedLocalImages.add(file));
+    }
+  }
+
+  void _removeExistingImage(int index) {
+    setState(() {
+      _deletedImageUrls.add(_existingImageUrls[index]);
+      _existingImageUrls.removeAt(index);
+    });
+  }
+
+  void _removeLocalImage(int index) {
+    setState(() => _selectedLocalImages.removeAt(index));
   }
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryBlue = Color(0xFF90C2D8); 
-    const Color bgBlue = Color(0xFFE6F3FB); 
-    const Color textLabelBlue = Color(0xFF6A97A8); 
-    const Color yellowBtn = Color(0xFFFFEFA6); 
+    const Color primaryBlue = Color(0xFF90C2D8);
+    const Color bgBlue = Color(0xFFE6F3FB);
+    const Color textLabelBlue = Color(0xFF6A97A8);
+    const Color yellowBtn = Color(0xFFFFEFA6);
 
     return Scaffold(
+      bottomNavigationBar: _buildStickyBottomBar(yellowBtn), 
       body: SafeArea(
-        child: Column(
-          children: [
-            HomeTopBar(
-              showProfile: true,
-              onMenuTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const DogListPage()),
-                );
-              },
-              onNotificationTap: () => debugPrint("Notification tapped"),
-              onProfileTap: () => debugPrint("Profile tapped"),
-            ),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              HomeTopBar(
+                showProfile: true,
+                onMenuTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DogListPage())),
+              ),
 
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(0, 15, 0, 30),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(15, 15, 15, 20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 4,
-                        offset: const Offset(0, 1),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
+                child: Column(
+                  children: [
+                    _buildHeader(context),
+                    const SizedBox(height: 15),
+                    _buildActivityImages(bgBlue, primaryBlue), 
+                    const SizedBox(height: 15),
+
+                    Container(
+                      padding: const EdgeInsets.all(15),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: primaryBlue.withOpacity(0.5)),
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // --- Header Row ---
-                      Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back, color: Colors.black87),
-                            onPressed: () => Navigator.pop(context),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
+                          Center(child: Text("ข้อมูลกิจกรรม", style: GoogleFonts.inter(fontWeight: FontWeight.w500))),
+                          const SizedBox(height: 15),
+                          _buildFormRow("ชื่อ:", _buildInputBox(_nameController, "ชื่อกิจกรรม"), textLabelBlue),
+                          _buildDivider(),
+                          _buildFormRow("วัน:", _buildPlainText(_getThaiDate(widget.selectedDateFromCalendar)), textLabelBlue),
+                          _buildDivider(),
+                          _buildFormRow("เวลา:", _buildTimePicker(context), textLabelBlue),
+                          _buildDivider(),
+                          _buildFormRow("ระยะเวลา:", _buildDurationPickerBtn(context), textLabelBlue),
+                          _buildDivider(),
+                          _buildFormRow("โน้ต:", _buildInputBox(_noteController, "โน้ตเพิ่มเติม..."), textLabelBlue),
+                          _buildDivider(),
+                          _buildFormRow(
+                            "แจ้งเตือน:", 
+                            ReminderPicker(selectedMinutes: _selectedReminder, onChanged: (val) => setState(() => _selectedReminder = val)), 
+                            textLabelBlue
                           ),
-                          Expanded(
-                            child: Center(
-                              child: Text(
-                                "เพิ่มกิจกรรมใหม่",
-                                style: GoogleFonts.inter(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                            ),
+                          _buildDivider(),
+                          RecurrenceSection(
+                            labelColor: textLabelBlue, primaryColor: primaryBlue,
+                            baseDate: widget.selectedDateFromCalendar, initialData: _recurrenceData, 
+                            onChanged: (data) => _recurrenceData = data, 
                           ),
-                          const SizedBox(width: 24), 
                         ],
                       ),
-                      const SizedBox(height: 15), 
-
-                      // --- Activity Icon ---
-                      Container(
-                        width: 80, 
-                        height: 80,
-                        decoration: const BoxDecoration(
-                          color: bgBlue,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.assignment,
-                          color: primaryBlue,
-                          size: 50, 
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        "ฝึก",
-                        style: GoogleFonts.inter(
-                          fontSize: 16, 
-                          fontWeight: FontWeight.w500,
-                          color: primaryBlue,
-                        ),
-                      ),
-                      const SizedBox(height: 15), 
-
-                      // --- Activity Info Card ---
-                      Container(
-                        padding: const EdgeInsets.all(15), 
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: primaryBlue.withOpacity(0.5), width: 1),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Center(
-                              child: Text(
-                                "ข้อมูลกิจกรรม",
-                                style: GoogleFonts.inter(
-                                  fontSize: 15, 
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 10), 
-
-                            // Form Fields
-                            _buildFormRow("ชื่อ:", _buildInputBox("เดินเล่นหลังเลิกงาน"), textLabelBlue),
-                            _buildDivider(),
-                            
-                            _buildFormRow("วัน:", _buildPlainText("23 พฤศจิกายน พ.ศ.2567"), textLabelBlue),
-                            _buildDivider(),
-                            
-                            _buildFormRow("เวลา:", Row(
-                              children: [
-                                _buildTimePicker(context),
-                                const SizedBox(width: 8),
-                                const Text("น.", style: TextStyle(fontSize: 14)),
-                              ],
-                            ), textLabelBlue),
-                            _buildDivider(),
-
-                            // 🌟 3. เปลี่ยนมาใช้ปุ่มสำหรับเรียก Duration Picker
-                            _buildFormRow("ระยะเวลา:", _buildDurationPickerBtn(context), textLabelBlue),
-                            _buildDivider(),
-
-
-                            _buildFormRow("โน้ต:", _buildInputBox("มีความสุขมากเลย"), textLabelBlue),
-                            _buildDivider(),
-
-                            _buildFormRow("แจ้งเตือน:", _buildActualDropdown(
-                              _selectedReminder, 
-                              ["ไม่เตือน", "ทุกวัน", "ทุกสัปดาห์"],
-                              (val) => setState(() => _selectedReminder = val!),
-                            ), textLabelBlue),
-                            _buildDivider(),
-
-                            _buildFormRow("วันที่สิ้นสุดการแจ้งเตือน:", _buildPlainText("25 พฤศจิกายน ค.ศ.2026"), textLabelBlue, labelFlex: 4),
-                            _buildDivider(),
-
-                            _buildFormRow("รูป:", Row(
-                              children: [
-                                _buildUploadButton(),
-                                const SizedBox(width: 8),
-                                Text(
-                                  "1/4 (รูป) อัพโหลด",
-                                  style: GoogleFonts.inter(color: Colors.grey[500], fontSize: 12),
-                                )
-                              ],
-                            ), textLabelBlue),
-                          ],
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 25), 
-
-                      // --- Save Button ---
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Material(
-                          color: yellowBtn,
-                          borderRadius: BorderRadius.circular(20),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(20),
-                            onTap: () {
-                              debugPrint("บันทึกข้อมูลเดิน - เวลา: $_formattedDuration, ระยะทาง: $_formattedDistance");
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10), 
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    "บันทึก",
-                                    style: GoogleFonts.inter(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Icon(Icons.check, size: 18, color: Colors.black87),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 40), 
+                  ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ==========================================
-  // Helper Widgets 
-  // ==========================================
+  Future<void> _deleteEvent() async {
+    bool isRecurring = _recurrenceData.repeatType != 'none';
+    String dialogContent = isRecurring 
+        ? "กิจกรรมนี้มีการตั้งค่าทำซ้ำ การลบจะทำให้กิจกรรมที่ทำซ้ำทั้งหมดถูกลบออกจากปฏิทินด้วย\n\nคุณแน่ใจหรือไม่ว่าต้องการลบ?"
+        : "คุณแน่ใจหรือไม่ว่าต้องการลบกิจกรรมนี้?";
 
-  Widget _buildFormRow(String label, Widget child, Color labelColor, {int labelFlex = 2}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5), 
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start, 
-        children: [
-          Expanded(
-            flex: labelFlex,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 8.0), 
-              child: Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 16, 
-                  color: labelColor,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 5,
-            child: child,
-          ),
+    bool confirm = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("ลบกิจกรรม", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        content: Text(dialogContent, style: GoogleFonts.inter()),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text("ยกเลิก", style: GoogleFonts.inter(color: Colors.grey[700]))),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text("ลบข้อมูล", style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.bold))),
         ],
-      ),
-    );
-  }
+      )
+    ) ?? false;
 
-  Widget _buildDivider() {
-    return Divider(color: Colors.grey[200], height: 10, thickness: 1); 
-  }
-
-  Widget _buildPlainText(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8.0), 
-      child: Text(
-        text,
-        style: GoogleFonts.inter(fontSize: 13, color: Colors.black87),
-      ),
-    );
-  }
-
-  Widget _buildInputBox(String hint) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: TextField(
-        minLines: 1, 
-        maxLines: null, 
-        keyboardType: TextInputType.multiline, 
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: GoogleFonts.inter(color: Colors.grey[500], fontSize: 14, fontWeight: FontWeight.w400),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), 
-          isDense: true,
-        ),
-        style: GoogleFonts.inter(fontSize: 14),
-      ),
-    );
-  }
-
-  Widget _buildTimePicker(BuildContext context) {
-    String formattedTime = '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
-    
-    return InkWell(
-      onTap: () async {
-        final TimeOfDay? picked = await showTimePicker(
-          context: context,
-          initialTime: _selectedTime,
-        );
-        if (picked != null && picked != _selectedTime) {
-          setState(() {
-            _selectedTime = picked;
-          });
+    if (confirm && widget.eventId != null) {
+      try {
+        for (String url in _existingImageUrls) {
+          try { await FirebaseStorage.instance.refFromURL(url).delete(); } catch (e) { debugPrint("Storage delete error: $e"); }
         }
-      },
-      child: Container(
-        height: 32, 
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[300]!),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(formattedTime, style: GoogleFonts.inter(fontSize: 13, color: Colors.black87)),
-            const SizedBox(width: 8),
-            const Icon(Icons.access_time, color: Colors.black87, size: 16),
-          ],
-        ),
-      ),
+
+        await _firestore.collection('dog_activities').doc(widget.eventId).delete();
+        await NotificationService.cancelEventNotifications(widget.eventId!);
+
+        if (mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          Navigator.pop(context); 
+          messenger.showSnackBar(const SnackBar(content: Text("ลบกิจกรรมเรียบร้อยแล้ว"), backgroundColor: Colors.redAccent));
+        }
+      } catch (e) {
+        _showErrorSnackBar("เกิดข้อผิดพลาดในการลบ: $e");
+      }
+    }
+  }
+
+  Future<void> _saveToFirebase() async {
+    final DateTime startDateTime = DateTime(widget.selectedDateFromCalendar.year, widget.selectedDateFromCalendar.month, widget.selectedDateFromCalendar.day, _selectedTime.hour, _selectedTime.minute);
+
+    if (_recurrenceData.repeatType == 'weekly' && _recurrenceData.weeklyDays.isEmpty) {
+      _showErrorSnackBar("กรุณาเลือกวันในสัปดาห์อย่างน้อย 1 วัน"); return;
+    }
+
+    try {
+      showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
+
+      final currentDogId = Provider.of<CurrentDogProvider>(context, listen: false).currentDogId;
+      if (currentDogId == null) {
+        Navigator.pop(context); 
+        _showErrorSnackBar("กรุณาเลือกน้องหมาก่อนบันทึกกิจกรรม");
+        return;
+      }
+
+      for (String url in _deletedImageUrls) {
+        try { await FirebaseStorage.instance.refFromURL(url).delete(); } catch (e) { debugPrint("Storage delete orphaned image error: $e"); }
+      }
+
+      List<String> uploadedImageUrls = [];
+      for (File imageFile in _selectedLocalImages) {
+        String fileName = 'activities/${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
+        Reference ref = FirebaseStorage.instance.ref().child(fileName);
+        await ref.putFile(imageFile);
+        String downloadUrl = await ref.getDownloadURL();
+        uploadedImageUrls.add(downloadUrl);
+      }
+
+      List<String> finalImagesToSave = [..._existingImageUrls, ...uploadedImageUrls];
+
+      Map<String, dynamic> recurrencePayload = {'type': _recurrenceData.repeatType, 'interval': _recurrenceData.interval};
+      if (_recurrenceData.repeatType != 'none') {
+        if (_recurrenceData.repeatType == 'weekly') recurrencePayload['days_of_week'] = _recurrenceData.weeklyDays;
+        if (_recurrenceData.repeatType == 'monthly') recurrencePayload['monthly_mode'] = _recurrenceData.monthlyMode;
+        if (_recurrenceData.endDate != null) recurrencePayload['end_date'] = Timestamp.fromDate(_recurrenceData.endDate!);
+        else if (_recurrenceData.count != null) recurrencePayload['count'] = _recurrenceData.count;
+      }
+
+      Map<String, dynamic> payload = {
+        'type': 'train', // 🟢 เปลี่ยน Type เป็น train
+        'dog_id': currentDogId, 
+        'name': _nameController.text,
+        'start_time': Timestamp.fromDate(startDateTime), 
+        'duration_minutes': _selectedDuration?.inMinutes ?? 0,
+        'note': _noteController.text,
+        'reminder_offset_minutes': _selectedReminder, 
+        'recurrence': recurrencePayload,
+        'images': finalImagesToSave, 
+        'updated_at': FieldValue.serverTimestamp(),
+      };
+
+      String targetEventId = widget.eventId ?? ""; 
+
+      if (widget.eventId == null) {
+        payload['created_at'] = FieldValue.serverTimestamp();
+        DocumentReference docRef = await _firestore.collection('dog_activities').add(payload);
+        targetEventId = docRef.id; 
+      } else {
+        await _firestore.collection('dog_activities').doc(widget.eventId).update(payload);
+        targetEventId = widget.eventId!;
+      }
+
+      String getReminderMessage(int? minutes, String eventName) {
+        if (minutes == null) return "";
+        if (minutes == 0) return "ถึงเวลากิจกรรม $eventName แล้ว!";
+        if (minutes == 60) return "เตรียมตัว! กิจกรรม $eventName (1 ชั่วโมง ก่อนหน้า)";
+        if (minutes == 1440) return "เตรียมตัว! กิจกรรม $eventName (1 วัน ก่อนหน้า)";
+        return "เตรียมตัว! กิจกรรม $eventName ($minutes นาที ก่อนหน้า)";
+      }
+
+      await NotificationService.scheduleEventNotification(
+        eventId: targetEventId,
+        title: "แจ้งเตือนกิจกรรม: ${_nameController.text}",
+        body: getReminderMessage(_selectedReminder, _nameController.text), 
+        startDateTime: startDateTime,
+        reminderMinutes: _selectedReminder,
+        recurrenceData: _recurrenceData,
+        payload: targetEventId, 
+      );
+
+      if (mounted) {
+        final messenger = ScaffoldMessenger.of(context);
+        Navigator.pop(context); 
+        Navigator.pop(context); 
+        messenger.showSnackBar(const SnackBar(content: Text("บันทึกกิจกรรมเรียบร้อยแล้ว"), backgroundColor: Colors.green));
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context); 
+      debugPrint("Error saving to Firebase: $e");
+      _showErrorSnackBar("เกิดข้อผิดพลาดในการบันทึกข้อมูล: $e");
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.redAccent, duration: const Duration(seconds: 3)));
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Row(
+      children: [
+        IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context)),
+        Expanded(child: Center(child: Text(widget.eventId == null ? "เพิ่มกิจกรรมใหม่" : "รายละเอียดกิจกรรม", style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w500)))),
+        if (widget.eventId != null) IconButton(icon: const Icon(Icons.delete, color: Colors.redAccent), onPressed: _deleteEvent)
+        else const SizedBox(width: 48),
+      ],
     );
   }
 
-  // 🌟 ปุ่มเรียก Duration Picker
-  Widget _buildDurationPickerBtn(BuildContext context) {
-    return InkWell(
-      onTap: () {
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (context) => DurationPicker(
-            initialDuration: _selectedDuration ?? const Duration(hours: 0, minutes: 0),
-            onDurationChanged: (val) {
-              setState(() {
-                _selectedDuration = val;
-              });
-            },
+  Widget _buildActivityImages(Color bg, Color iconCol) {
+    List<Widget> imageWidgets = [];
+    for (int i = 0; i < _existingImageUrls.length; i++) {
+      imageWidgets.add(_buildImageThumbnail(imageProvider: NetworkImage(_existingImageUrls[i]), iconCol: iconCol, onRemove: () => _removeExistingImage(i)));
+    }
+    for (int i = 0; i < _selectedLocalImages.length; i++) {
+      imageWidgets.add(_buildImageThumbnail(imageProvider: FileImage(_selectedLocalImages[i]), iconCol: iconCol, onRemove: () => _removeLocalImage(i)));
+    }
+    if (_totalImageCount < 4) {
+      imageWidgets.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 5),
+          child: GestureDetector(
+            onTap: _pickImage,
+            child: Stack(
+              alignment: Alignment.bottomRight,
+              children: [
+                // 🟢 เปลี่ยน Icon เป็น Icons.assignment ให้ตรงกับการฝึก
+                Container(width: 75, height: 75, decoration: BoxDecoration(color: bg, shape: BoxShape.circle), child: Icon(Icons.assignment, color: iconCol, size: 40)),
+                Container(decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: iconCol, width: 1.5)), child: Icon(Icons.add, color: iconCol, size: 20))
+              ],
+            ),
           ),
-        );
-      },
-      child: Container(
-        height: 32, 
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[300]!),
-          borderRadius: BorderRadius.circular(8),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(_formattedDuration, style: GoogleFonts.inter(fontSize: 13, color: Colors.black87)),
-            const SizedBox(width: 8),
-            const Icon(Icons.keyboard_arrow_down, color: Colors.black87, size: 16),
-          ],
-        ),
-      ),
-    );
+      );
+    }
+    // 🟢 เปลี่ยน Text เป็น "ฝึก"
+    return Column(children: [SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: imageWidgets)), const SizedBox(height: 10), Text("ฝึก", style: GoogleFonts.inter(color: iconCol, fontWeight: FontWeight.bold, fontSize: 16))]);
   }
 
-  // 🌟 ปุ่มเรียก Distance Picker
-  Widget _buildDistancePickerBtn(BuildContext context) {
-    return InkWell(
-      onTap: () {
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (context) => DistancePicker(
-            initialDistanceKm: _selectedDistance ?? 0.0,
-            onDistanceChanged: (val) {
-              setState(() {
-                _selectedDistance = val;
-              });
-            },
-          ),
-        );
-      },
-      child: Container(
-        height: 32, 
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[300]!),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(_formattedDistance, style: GoogleFonts.inter(fontSize: 13, color: Colors.black87)),
-            const SizedBox(width: 8),
-            const Icon(Icons.keyboard_arrow_down, color: Colors.black87, size: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActualDropdown(String currentValue, List<String> options, ValueChanged<String?> onChanged) {
-    return Container(
-      height: 32, 
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: currentValue,
-          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black87, size: 16),
-          isDense: true,
-          style: GoogleFonts.inter(fontSize: 13, color: Colors.black87),
-          onChanged: onChanged,
-          items: options.map<DropdownMenuItem<String>>((String value) {
-            return DropdownMenuItem<String>(
-              value: value,
-              child: Text(value),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildUploadButton() {
-    return Container(
-      height: 32, 
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+  Widget _buildImageThumbnail({required ImageProvider imageProvider, required Color iconCol, required VoidCallback onRemove}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+      child: Stack(
+        alignment: Alignment.topRight,
         children: [
-          Text("อัพโหลดไฟล์", style: GoogleFonts.inter(fontSize: 12, color: Colors.black87)),
-          const SizedBox(width: 6),
-          const Icon(Icons.upload_outlined, size: 14, color: Colors.black87),
+          Container(width: 75, height: 75, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: iconCol, width: 2), image: DecorationImage(image: imageProvider, fit: BoxFit.cover))),
+          GestureDetector(onTap: onRemove, child: Container(padding: const EdgeInsets.all(2), decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle), child: const Icon(Icons.cancel, color: Colors.redAccent, size: 18)))
         ],
+      ),
+    );
+  }
+
+  Widget _buildFormRow(String label, Widget child, Color labelColor) => Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [SizedBox(width: 100, child: Text(label, style: GoogleFonts.inter(color: labelColor, fontSize: 14))), Expanded(child: child)]));
+  
+  Widget _buildInputBox(TextEditingController controller, String hint) => Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)), child: TextField(controller: controller, maxLines: null, keyboardType: TextInputType.multiline, decoration: InputDecoration(hintText: hint, border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero), style: const TextStyle(fontSize: 14)));
+  
+  Widget _buildDivider() => const Divider(height: 20, thickness: 1, color: Color(0xFFF0F0F0));
+  
+  Widget _buildPlainText(String t) => Text(t, style: const TextStyle(fontSize: 14));
+  
+  Widget _buildTimePicker(BuildContext context) => InkWell(onTap: () async { final time = await showTimePicker(context: context, initialTime: _selectedTime); if (time != null) setState(() => _selectedTime = time); }, child: Text("${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')} น.", style: const TextStyle(color: Colors.blue)));
+  
+  Widget _buildDurationPickerBtn(BuildContext context) => InkWell(onTap: () => showModalBottomSheet(context: context, backgroundColor: Colors.transparent, builder: (_) => DurationPicker(initialDuration: _selectedDuration ?? Duration.zero, onDurationChanged: (d) => setState(() => _selectedDuration = d))), child: Text(_formattedDuration, style: const TextStyle(color: Colors.blue)));
+  
+  Widget _buildStickyBottomBar(Color col) {
+    return SafeArea(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 15),
+        decoration: BoxDecoration(boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -4))]),
+        child: SizedBox(
+          height: 55, 
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: col, foregroundColor: Colors.black87, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+            onPressed: _saveToFirebase,
+            icon: const Icon(Icons.check, size: 24),
+            label: Text(widget.eventId == null ? "บันทึก" : "อัปเดต", style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)), 
+          ),
+        ),
       ),
     );
   }
 }
-
-  // 🌟 วิดเจ็ตใหม่: สำหรับ Dropdown ที่กดเลือกตัวเลือกได้จริง
-  Widget _buildActualDropdown(String currentValue, List<String> options, ValueChanged<String?> onChanged) {
-    return Container(
-      height: 32, 
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: currentValue,
-          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black87, size: 16),
-          isDense: true,
-          style: GoogleFonts.inter(fontSize: 13, color: Colors.black87),
-          onChanged: onChanged,
-          items: options.map<DropdownMenuItem<String>>((String value) {
-            return DropdownMenuItem<String>(
-              value: value,
-              child: Text(value),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildUploadButton() {
-    return Container(
-      height: 32, 
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text("อัพโหลดไฟล์", style: GoogleFonts.inter(fontSize: 12, color: Colors.black87)),
-          const SizedBox(width: 6),
-          const Icon(Icons.upload_outlined, size: 14, color: Colors.black87),
-        ],
-      ),
-    );
-  }

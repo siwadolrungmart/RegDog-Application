@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -20,7 +21,18 @@ class DogListPage extends StatefulWidget {
 
 class _DogListPageState extends State<DogListPage> {
   final DatabaseService _db = DatabaseService();
-  static const String _ownerId = 'temp_user_123';
+  
+  // สร้างตัวแปรเก็บ uid ปัจจุบัน
+  late String _currentUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    // ดึง uid ของผู้ใช้งานปัจจุบันที่กำลังล็อกอินอยู่
+    final user = FirebaseAuth.instance.currentUser;
+    // ถ้า user ไม่เป็น null ให้เก็บ uid ไว้ (ถ้าเป็น null ให้ใส่ string ว่างกันเหนียวไว้ก่อน)
+    _currentUserId = user?.uid ?? ''; 
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,9 +45,9 @@ class _DogListPageState extends State<DogListPage> {
             child: Column(
               children: [
                 const TopBar(),
-                Expanded(
+               Expanded(
                   child: StreamBuilder<QuerySnapshot>(
-                    stream: _db.getDogsByOwner(_ownerId),
+                    stream: _db.getDogsByOwner(_currentUserId), // ใช้ตัวแปรใหม่
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
                         return Center(
@@ -55,18 +67,46 @@ class _DogListPageState extends State<DogListPage> {
                         final birthTimestamp = data['birthDate'] as Timestamp?;
                         final DateTime? birthDate = birthTimestamp?.toDate();
 
-                        String ageStr = 'Unknown age';
+                        // -----------------------------------------------------
+                        // 1. ส่วนคำนวณอายุแบบละเอียด (ปี เดือน วัน)
+                        // -----------------------------------------------------
+                        String ageStr = 'ไม่ทราบอายุ';
                         if (birthDate != null) {
                           final now = DateTime.now();
-                          final diff = now.difference(birthDate);
-                          int totalMonths = (diff.inDays / 30.44).round();
-                          int years = totalMonths ~/ 12;
-                          int remainingMonths = totalMonths % 12;
-                          ageStr = years > 0
-                              ? '$years ปี $remainingMonths เดือน'
-                              : '$remainingMonths เดือน';
+                          
+                          int years = now.year - birthDate.year;
+                          int months = now.month - birthDate.month;
+                          int days = now.day - birthDate.day;
+
+                          if (days < 0) {
+                            months--;
+                            // หาวันสุดท้ายของเดือนก่อนหน้า
+                            final previousMonth = DateTime(now.year, now.month, 0);
+                            days += previousMonth.day;
+                          }
+
+                          if (months < 0) {
+                            years--;
+                            months += 12;
+                          }
+
+                          // ประกอบข้อความอายุ (แสดงเฉพาะหน่วยที่มีค่ามากกว่า 0)
+                          List<String> ageParts = [];
+                          if (years > 0) ageParts.add('$years ปี');
+                          if (months > 0) ageParts.add('$months เดือน');
+                          if (days > 0) ageParts.add('$days วัน');
+                          
+                          // ถ้าอายุน้อยกว่า 1 วัน (เพิ่งเกิดวันนี้)
+                          if (ageParts.isEmpty) {
+                            ageStr = '0 วัน';
+                          } else {
+                            ageStr = ageParts.join(' ');
+                          }
                         }
 
+                        // -----------------------------------------------------
+                        // 2. ส่วนการจัดรูปแบบน้ำหนัก
+                        // -----------------------------------------------------
                         final double weightNum =
                             (data['weight'] as num?)?.toDouble() ?? 0.0;
                         final String weightStr = weightNum == 0.0
@@ -75,15 +115,18 @@ class _DogListPageState extends State<DogListPage> {
 
                         return {
                           'docId': doc.id,
-                          'name': (data['name'] ?? 'Unnamed Dog').toString(),
+                          'rawData': data, // 🟢 เพิ่มบรรทัดนี้: เก็บข้อมูลดิบส่งให้ Provider
+                          'name': (data['name'] ?? 'ไม่ทราบชื่อ').toString(),
+                          // -----------------------------------------------------
+                          // 3. ปรับ Format วันเกิดเป็น dd MM yyyy (เช่น 23 11 2026)
+                          // -----------------------------------------------------
                           'date': birthDate != null
-                              ? DateFormat('dd MMM yyyy').format(birthDate)
+                              ? DateFormat('dd MM yyyy').format(birthDate)
                               : 'ไม่ทราบวันที่',
                           'age': ageStr,
                           'breed': (data['breed'] ?? 'ไม่ทราบพันธุ์').toString(),
                           'weight': weightStr,
                           'image': (data['photoUrl'] ?? '').toString(),
-                          // ถ้ามี field อื่นใน Firestore ที่อยากใช้ เช่น gender, microchip สามารถเพิ่มได้ที่นี่
                         };
                       }).toList();
 
@@ -157,7 +200,7 @@ class TopBar extends StatelessWidget {
 }
 
 class DogCard extends StatelessWidget {
-  final Map<String, dynamic> dogData; // เปลี่ยนเป็น dynamic เพื่อความยืดหยุ่น
+  final Map<String, dynamic> dogData;
   final String docId;
 
   const DogCard({
@@ -185,7 +228,7 @@ class DogCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          DogImage(
+          DogCardImage(
             networkImageUrl: dogData['image'] ?? '',
             placeholderAssetPath: 'assets/dog.png',
           ),
@@ -236,9 +279,8 @@ class DogCard extends StatelessWidget {
                         listen: false,
                       );
 
-                 
-
-                    provider.selectDogById(docId);
+                      // 🟢 แก้ไข: ใช้ selectDog แทน selectDogById และส่ง rawData ไปด้วย
+                      provider.selectDog(docId, dogData['rawData']);
 
                       Navigator.push(
                         context,
@@ -287,11 +329,11 @@ class DogCard extends StatelessWidget {
   }
 }
 
-class DogImage extends StatelessWidget {
+class DogCardImage extends StatelessWidget {
   final String networkImageUrl;
   final String placeholderAssetPath;
 
-  const DogImage({
+  const DogCardImage({
     super.key,
     required this.networkImageUrl,
     required this.placeholderAssetPath,
@@ -299,37 +341,32 @@ class DogImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Stack(
-        children: [
-          Image.asset(
-            placeholderAssetPath,
-            width: 131,
-            height: 180,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) =>
-                Container(width: 110, height: 110, color: Colors.grey[300]),
-          ),
-          if (networkImageUrl.isNotEmpty)
-            Image.network(
-              networkImageUrl,
-              width: 131,
-              height: 164,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return const SizedBox(width: 131, height: 164);
-              },
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return const SizedBox(
-                  width: 131,
-                  height: 164,
-                  child: Center(child: CircularProgressIndicator()),
-                );
-              },
-            ),
-        ],
+    return Container(
+      width: 131, // ปรับความกว้างให้พอดีกับ Card
+      height: 180, // ปรับความสูงให้สมดุล
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: Colors.grey[200], // สีพื้นหลังเผื่อรูปโหลดไม่ขึ้น
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: networkImageUrl.isNotEmpty
+            ? Image.network(
+                networkImageUrl,
+                fit: BoxFit.cover, // ให้รูปเต็มกรอบพอดี ไม่เบี้ยว
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return const Center(child: CircularProgressIndicator());
+                },
+                errorBuilder: (context, error, stackTrace) => Image.asset(
+                  placeholderAssetPath,
+                  fit: BoxFit.cover,
+                ),
+              )
+            : Image.asset(
+                placeholderAssetPath,
+                fit: BoxFit.cover,
+              ),
       ),
     );
   }

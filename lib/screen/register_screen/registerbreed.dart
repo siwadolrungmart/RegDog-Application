@@ -4,12 +4,13 @@ import 'package:regdogapp/component/bar.dart';
 import 'package:regdogapp/screen/dog_list.dart';
 import 'package:regdogapp/service/dogdatabase_service.dart';
 // TODO: อย่าลืม Import ไฟล์ DatabaseService ของคุณเข้ามาด้วยนะครับ
-// import 'path_to_your_file/database_service.dart'; 
+// import 'path_to_your_file/database_service.dart';
 
 class Registerbreed extends StatefulWidget {
   final String dogName;
   final String dogGender;
-  final String dogBirthdate; // สมมติว่ามาในรูปแบบ "DD/MM/YYYY" เช่น "01/03/2026"
+  final String
+  dogBirthdate; // สมมติว่ามาในรูปแบบ "DD/MM/YYYY" เช่น "01/03/2026"
 
   const Registerbreed({
     super.key,
@@ -26,7 +27,7 @@ class _RegisterbreedState extends State<Registerbreed> {
   // ตัวแปรเก็บสายพันธุ์ที่เลือก
   String? _selectedBreed;
   int _currentIndex = 2; // ตั้งค่าเริ่มต้นที่ 2 (หน้าแรก)
-  
+
   // รายการสายพันธุ์สุนัข
   final List<String> _dogBreeds = [
     'ปอมเมอเรเนียน',
@@ -40,10 +41,10 @@ class _RegisterbreedState extends State<Registerbreed> {
   // สี Constants ตาม Design
   static const Color _bgOffWhite = Color(0xFFF6F6F6);
   static const Color _textDark = Color(0xFF212121);
-  static const Color _textLightBlue = Color(0xFF6B9BA3); 
+  static const Color _textLightBlue = Color(0xFF6B9BA3);
   static const Color _btnYellow = Color(0xFFFEF0B3);
-  static const Color _dropdownBg = Color(0xFFBCE6EB); 
-  static const Color _dividerColor = Color(0xFF212121); 
+  static const Color _dropdownBg = Color(0xFFBCE6EB);
+  static const Color _dividerColor = Color(0xFF212121);
 
   // ฟังก์ชันแปลง String เป็น DateTime
   DateTime _parseDate(String dateStr) {
@@ -78,7 +79,7 @@ class _RegisterbreedState extends State<Registerbreed> {
                   child: IconButton(
                     icon: const Icon(Icons.arrow_back, color: _textDark),
                     onPressed: () {
-                      Navigator.pop(context); 
+                      Navigator.pop(context);
                     },
                   ),
                 ),
@@ -96,7 +97,7 @@ class _RegisterbreedState extends State<Registerbreed> {
 
                           // รูปการ์ตูนสุนัข
                           Image.asset(
-                            'assets/dog-ping.png', 
+                            'assets/dog-ping.png',
                             width: 200,
                             height: 200,
                             fit: BoxFit.contain,
@@ -123,39 +124,59 @@ class _RegisterbreedState extends State<Registerbreed> {
                           // --- 3. ช่องเลือกสายพันธุ์ ---
                           DropdownButtonFormField<String>(
                             value: _selectedBreed,
-                            isExpanded: true, 
+                            isExpanded: true,
                             icon: const SizedBox.shrink(),
                             style: const TextStyle(
                               fontSize: 16,
-                              color: _textLightBlue, 
+                              color: _textLightBlue,
                               fontFamily: 'Inter',
                               fontWeight: FontWeight.w500,
                             ),
                             decoration: InputDecoration(
-                              fillColor: _dropdownBg, 
+                              fillColor: _dropdownBg,
                               filled: true,
                               hintText: 'สายพันธุ์',
                               hintStyle: TextStyle(
                                 color: _textLightBlue.withOpacity(0.7),
                               ),
                               prefixIcon: const Padding(
-                                padding: EdgeInsets.only(left: 20.0, right: 12.0),
-                                child: Icon(Icons.pets, color: _textLightBlue, size: 24),
+                                padding: EdgeInsets.only(
+                                  left: 20.0,
+                                  right: 12.0,
+                                ),
+                                child: Icon(
+                                  Icons.pets,
+                                  color: _textLightBlue,
+                                  size: 24,
+                                ),
                               ),
-                              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                              prefixIconConstraints: const BoxConstraints(
+                                minWidth: 0,
+                                minHeight: 0,
+                              ),
                               suffixIcon: SizedBox(
-                                width: 64, 
+                                width: 64,
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
-                                    Container(width: 1.5, height: 24, color: _dividerColor),
+                                    Container(
+                                      width: 1.5,
+                                      height: 24,
+                                      color: _dividerColor,
+                                    ),
                                     const SizedBox(width: 8),
-                                    const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 32),
+                                    const Icon(
+                                      Icons.keyboard_arrow_down_rounded,
+                                      color: Colors.white,
+                                      size: 32,
+                                    ),
                                     const SizedBox(width: 16),
                                   ],
                                 ),
                               ),
-                              contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 16,
+                              ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(50),
                                 borderSide: BorderSide.none,
@@ -164,7 +185,10 @@ class _RegisterbreedState extends State<Registerbreed> {
                             items: _dogBreeds.map((String breed) {
                               return DropdownMenuItem<String>(
                                 value: breed,
-                                child: Text(breed, style: const TextStyle(color: _textDark)),
+                                child: Text(
+                                  breed,
+                                  style: const TextStyle(color: _textDark),
+                                ),
                               );
                             }).toList(),
                             onChanged: (String? newValue) {
@@ -181,10 +205,7 @@ class _RegisterbreedState extends State<Registerbreed> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               // ปุ่ม "ข้าม"
-                              SizedBox(
-                                height: 40,
-                               
-                              ),
+                              SizedBox(height: 40),
                               const SizedBox(width: 10),
 
                               // ปุ่ม "ต่อไป"
@@ -192,69 +213,101 @@ class _RegisterbreedState extends State<Registerbreed> {
                                 height: 40,
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
                                     backgroundColor: _btnYellow,
                                     foregroundColor: Colors.black54,
                                     elevation: 0,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(24),
+                                    ),
                                   ),
                                   onPressed: () async {
                                     // 1. เช็คว่าเลือกสายพันธุ์หรือยัง
                                     if (_selectedBreed == null) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('กรุณาเลือกสายพันธุ์น้องหมาด้วยนะคะ')),
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'กรุณาเลือกสายพันธุ์น้องหมาด้วยนะคะ',
+                                          ),
+                                        ),
                                       );
                                       return;
                                     }
 
-                                    // แสดง Loading 
+                                    // แสดง Loading
                                     showDialog(
                                       context: context,
                                       barrierDismissible: false,
                                       builder: (context) => const Center(
-                                        child: CircularProgressIndicator(color: _btnYellow),
+                                        child: CircularProgressIndicator(
+                                          color: _btnYellow,
+                                        ),
                                       ),
                                     );
 
                                     try {
                                       // 2. แปลง String เป็น DateTime
-                                      DateTime parsedBirthDate = _parseDate(widget.dogBirthdate);
+                                      DateTime parsedBirthDate = _parseDate(
+                                        widget.dogBirthdate,
+                                      );
 
                                       // 3. 🐾 เรียกใช้ DatabaseService แทนการยิงตรงๆ 🐾
                                       // ต้องแน่ใจว่า import class DatabaseService มาแล้วด้านบน
-                                      bool isSuccess = await DatabaseService().addDog(
-                                        name: widget.dogName,
-                                        gender: widget.dogGender,
-                                        breed: _selectedBreed!,
-                                        birthDate: parsedBirthDate,
-                                      );
+                                      bool isSuccess = await DatabaseService()
+                                          .addDog(
+                                            name: widget.dogName,
+                                            gender: widget.dogGender,
+                                            breed: _selectedBreed!,
+                                            birthDate: parsedBirthDate,
+                                          );
 
                                       // ปิด Loading
                                       if (!mounted) return;
                                       Navigator.pop(context);
 
                                       if (isSuccess) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('บันทึกข้อมูลน้องหมาสำเร็จแล้ว!')),
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'บันทึกข้อมูลน้องหมาสำเร็จแล้ว!',
+                                            ),
+                                          ),
                                         );
                                         // TODO: ย้ายไปหน้าถัดไป
-                                         Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const DogListPage(), // เปลี่ยนเป็นชื่อคลาสหน้าเพิ่มสุนัขของคุณ
-          ),
-        );
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                const DogListPage(), // เปลี่ยนเป็นชื่อคลาสหน้าเพิ่มสุนัขของคุณ
+                                          ),
+                                        );
                                       } else {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('เกิดข้อผิดพลาดในการบันทึกฐานข้อมูล')),
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'เกิดข้อผิดพลาดในการบันทึกฐานข้อมูล',
+                                            ),
+                                          ),
                                         );
                                       }
-
                                     } catch (e) {
                                       Navigator.pop(context);
                                       debugPrint("Error saving dog: $e");
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text('เกิดข้อผิดพลาด: $e'),
+                                        ),
                                       );
                                     }
                                   },
@@ -263,10 +316,18 @@ class _RegisterbreedState extends State<Registerbreed> {
                                     children: [
                                       Text(
                                         'บันทึก',
-                                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: _textDark),
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          color: _textDark,
+                                        ),
                                       ),
                                       SizedBox(width: 4),
-                                      Icon(Icons.arrow_forward, size: 20, color: _textDark),
+                                      Icon(
+                                        Icons.arrow_forward,
+                                        size: 20,
+                                        color: _textDark,
+                                      ),
                                     ],
                                   ),
                                 ),

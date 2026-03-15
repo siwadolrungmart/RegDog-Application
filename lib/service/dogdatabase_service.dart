@@ -1,34 +1,43 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart'; 
 
 class DatabaseService {
   final CollectionReference _dogCollection =
       FirebaseFirestore.instance.collection('dogs');
 
   // ==========================================
-  // 1. CREATE: ฟังก์ชันสำหรับเพิ่มข้อมูลสุนัขตัวใหม่ (ใส่ Default ไว้ที่นี่)
+  // 1. CREATE: ฟังก์ชันสำหรับเพิ่มข้อมูลสุนัขตัวใหม่
   // ==========================================
   Future<bool> addDog({
-    // --- ข้อมูลที่บังคับต้องส่งมาจากหน้า UI ---
     required String name,
     required String breed,
     required DateTime birthDate,
     required String gender,
-    // --- ข้อมูลที่มีค่า Default ให้แล้ว (ฝั่ง UI ไม่ต้องส่งมาก็ได้) ---
-    String ownerId = 'temp_user_123',
     double weight = 0.0,
     String photoUrl = '',
-    String? qrCodeId, // ปล่อยเป็น Nullable เดี๋ยวเราไปสร้างข้างใน
+    String? qrCodeId, 
     String microchip = '',
     String pedigree = '',
     String diseases = '',
   }) async {
     try {
+      // ดึงข้อมูล User ที่กำลังล็อกอินอยู่ ณ ปัจจุบัน
+      final user = FirebaseAuth.instance.currentUser;
+      
+      if (user == null) {
+        debugPrint('❌ ไม่พบผู้ใช้งานในระบบ (อาจจะล็อกเอาท์ไปแล้ว)');
+        return false;
+      }
+      
+      final String currentUserId = user.uid; 
+
       // ถ้าไม่ได้ส่งรหัส QR มา ให้สร้างอัตโนมัติจากเวลา
       final String generateQrCode = qrCodeId ?? 'QR_${DateTime.now().millisecondsSinceEpoch}';
-      // นำข้อมูลทั้งหมด (ทั้งที่รับมาและ Default) บันทึกลง Firestore
-      await _dogCollection.add({
-        'ownerId': ownerId,
+      
+      // บันทึกลง Firestore
+      final newDogRef = await _dogCollection.add({
+        'ownerId': currentUserId, 
         'name': name,
         'breed': breed,
         'birthDate': Timestamp.fromDate(birthDate),
@@ -41,7 +50,14 @@ class DatabaseService {
         'diseases': diseases,
         'createdAt': FieldValue.serverTimestamp(),
       });
-      debugPrint('✅ บันทึกข้อมูลน้องหมาสำเร็จ: $name');
+      
+      debugPrint('✅ บันทึกข้อมูลน้องหมาสำเร็จ: $name (ของ User ID: $currentUserId)');
+
+      // 🟢 ถ้ามีการใส่น้ำหนักเริ่มต้นมาด้วย ให้บันทึกเป็นประวัติครั้งแรกเลย
+      if (weight > 0) {
+        await recordWeightHistory(newDogRef.id, weight);
+      }
+
       return true;
     } catch (e) {
       debugPrint('❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล: $e');
@@ -91,7 +107,9 @@ class DatabaseService {
       if (microchip != null) updateData['microchip'] = microchip;
       if (pedigree != null) updateData['pedigree'] = pedigree;
       if (diseases != null) updateData['diseases'] = diseases;
+      
       updateData['updatedAt'] = FieldValue.serverTimestamp();
+      
       await _dogCollection.doc(docId).update(updateData);
       debugPrint('✅ แก้ไขข้อมูลน้องหมาสำเร็จ (ID: $docId)');
       return true;
@@ -113,5 +131,33 @@ class DatabaseService {
       debugPrint('❌ เกิดข้อผิดพลาดในการลบข้อมูล: $e');
       return false;
     }
+  }
+
+  // ==========================================
+  // 5. WEIGHT HISTORY: ระบบประวัติน้ำหนัก (Subcollection)
+  // ==========================================
+  
+  // 5.1 บันทึกประวัติน้ำหนัก
+  Future<bool> recordWeightHistory(String dogId, double weight) async {
+    try {
+      await _dogCollection.doc(dogId).collection('weight_history').add({
+        'weight': weight,
+        'recordedAt': FieldValue.serverTimestamp(),
+      });
+      debugPrint('✅ บันทึกประวัติน้ำหนักสำเร็จ (น้ำหนัก: $weight กก.)');
+      return true;
+    } catch (e) {
+      debugPrint('❌ เกิดข้อผิดพลาดในการบันทึกประวัติน้ำหนัก: $e');
+      return false;
+    }
+  }
+
+  // 5.2 ดึงประวัติน้ำหนักมาแสดงผล (เรียงจากล่าสุดไปเก่าสุด)
+  Stream<QuerySnapshot> getWeightHistory(String dogId) {
+    return _dogCollection
+        .doc(dogId)
+        .collection('weight_history')
+        .orderBy('recordedAt', descending: true)
+        .snapshots();
   }
 }

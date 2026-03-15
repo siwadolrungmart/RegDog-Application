@@ -4,22 +4,22 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart'; 
 import 'package:image_picker/image_picker.dart'; 
-import 'package:provider/provider.dart'; // 🟢 1. Import Provider
+import 'package:provider/provider.dart';
 
 import 'package:regdogapp/component/upperbar.dart';
 import 'package:regdogapp/screen/dog_list.dart';
-import 'package:regdogapp/component/duration_picker.dart';
-import 'package:regdogapp/component/distance_picker.dart';
+// 🟢 อิมพอร์ต DosagePicker ที่เพิ่งสร้างมาใช้งาน (แก้ path ให้ตรงกับไฟล์ของคุณ)
+import 'package:regdogapp/component/dosage_picker.dart'; 
 import 'package:regdogapp/component/event_settings.dart';
 import 'package:regdogapp/service/notification_service.dart'; 
-import 'package:regdogapp/providers/current_dog_provider.dart'; // 🟢 2. Import CurrentDogProvider
+import 'package:regdogapp/providers/current_dog_provider.dart';
 
-class AddWalkEventPage extends StatefulWidget {
+class AddMedicineEventPage extends StatefulWidget {
   final DateTime selectedDateFromCalendar;
   final String? eventId; 
   final Map<String, dynamic>? eventData; 
 
-  const AddWalkEventPage({
+  const AddMedicineEventPage({
     super.key,
     required this.selectedDateFromCalendar,
     this.eventId,
@@ -27,18 +27,22 @@ class AddWalkEventPage extends StatefulWidget {
   });
 
   @override
-  State<AddWalkEventPage> createState() => _AddWalkEventPageState();
+  State<AddMedicineEventPage> createState() => _AddMedicineEventPageState();
 }
 
-class _AddWalkEventPageState extends State<AddWalkEventPage> {
+class _AddMedicineEventPageState extends State<AddMedicineEventPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   
-  final TextEditingController _nameController = TextEditingController(text: "เดินเล่น");
+  // 🟢 กำหนดชื่อ Default เป็น "ยา"
+  final TextEditingController _nameController = TextEditingController(text: "ยา");
   final TextEditingController _noteController = TextEditingController();
   
   TimeOfDay _selectedTime = TimeOfDay.now(); 
-  Duration? _selectedDuration;
-  double? _selectedDistance;
+  
+  // 🟢 ตัวแปรสำหรับปริมาณยาและมื้ออาหาร
+  String _dosageAmount = '';
+  String _dosageUnit = 'เม็ด';
+  String _mealTiming = 'หลังอาหาร'; // ค่าเริ่มต้น
 
   int? _selectedReminder; 
   RecurrenceData _recurrenceData = RecurrenceData(
@@ -54,18 +58,11 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
   
   final ImagePicker _picker = ImagePicker();
 
-  String get _formattedDuration => _selectedDuration == null ? "เลือกเวลา" : "${_selectedDuration!.inHours}:${(_selectedDuration!.inMinutes % 60).toString().padLeft(2, '0')} ชม.";
-  String get _formattedDistance {
-    if (_selectedDistance == null) return "เลือกระยะทาง";
-    String formatted = _selectedDistance!.toStringAsFixed(2);
-    if (formatted.endsWith('0')) formatted = formatted.substring(0, formatted.length - 1);
-    if (formatted.endsWith('.0')) formatted = formatted.substring(0, formatted.length - 2);
-    return "$formatted กม.";
-  }
-
+  String get _formattedDosage => _dosageAmount.isEmpty ? "ระบุปริมาณ" : "$_dosageAmount $_dosageUnit";
+  
   String _getThaiDate(DateTime date) {
     const List<String> thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-    return "${date.day} ${thaiMonths[date.month - 1]} ${date.year }";
+    return "${date.day} ${thaiMonths[date.month - 1]} ${date.year}";
   }
 
   @override
@@ -74,7 +71,7 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
     if (widget.eventData != null) {
       final data = widget.eventData!;
       
-      _nameController.text = data['name'] ?? "เดินเล่น";
+      _nameController.text = data['name'] ?? "ยา";
       _noteController.text = data['note'] ?? "";
       
       if (data['images'] != null) {
@@ -88,8 +85,10 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
         if (start != null) _selectedTime = TimeOfDay(hour: start.hour, minute: start.minute);
       }
       
-      if (data['duration_minutes'] != null) _selectedDuration = Duration(minutes: (data['duration_minutes'] as num).toInt());
-      if (data['distance_km'] != null) _selectedDistance = (data['distance_km'] as num).toDouble();
+      // 🟢 โหลดข้อมูลยาและมื้ออาหารจากฐานข้อมูล
+      _dosageAmount = data['dosage_amount']?.toString() ?? '';
+      _dosageUnit = data['dosage_unit'] ?? 'เม็ด';
+      _mealTiming = data['meal_timing'] ?? 'หลังอาหาร';
       
       _selectedReminder = data['reminder_offset_minutes'] as int?;
       
@@ -182,18 +181,23 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Center(child: Text("ข้อมูลกิจกรรม", style: GoogleFonts.inter(fontWeight: FontWeight.w500))),
+                          Center(child: Text("ข้อมูลการทานยา", style: GoogleFonts.inter(fontWeight: FontWeight.w500))),
                           const SizedBox(height: 15),
-                          _buildFormRow("ชื่อ:", _buildInputBox(_nameController, "ชื่อกิจกรรม"), textLabelBlue),
+                          _buildFormRow("ชื่อ:", _buildInputBox(_nameController, "ชื่อยา"), textLabelBlue),
                           _buildDivider(),
                           _buildFormRow("วัน:", _buildPlainText(_getThaiDate(widget.selectedDateFromCalendar)), textLabelBlue),
                           _buildDivider(),
                           _buildFormRow("เวลา:", _buildTimePicker(context), textLabelBlue),
                           _buildDivider(),
-                          _buildFormRow("ระยะเวลา:", _buildDurationPickerBtn(context), textLabelBlue),
+                          
+                          // 🟢 ปริมาณยา
+                          _buildFormRow("ปริมาณยา:", _buildDosagePickerBtn(context), textLabelBlue),
                           _buildDivider(),
-                          _buildFormRow("ระยะทาง:", _buildDistancePickerBtn(context), textLabelBlue),
+                          
+                          // 🟢 ก่อนอาหาร / หลังอาหาร
+                          _buildFormRow("การทานยา:", _buildMealTimingSelector(), textLabelBlue),
                           _buildDivider(),
+                          
                           _buildFormRow("โน้ต:", _buildInputBox(_noteController, "โน้ตเพิ่มเติม..."), textLabelBlue),
                           _buildDivider(),
                           _buildFormRow(
@@ -222,16 +226,11 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
   }
 
   Future<void> _deleteEvent() async {
-    bool isRecurring = _recurrenceData.repeatType != 'none';
-    String dialogContent = isRecurring 
-        ? "กิจกรรมนี้มีการตั้งค่าทำซ้ำ การลบจะทำให้กิจกรรมที่ทำซ้ำทั้งหมดถูกลบออกจากปฏิทินด้วย\n\nคุณแน่ใจหรือไม่ว่าต้องการลบ?"
-        : "คุณแน่ใจหรือไม่ว่าต้องการลบกิจกรรมนี้?";
-
     bool confirm = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("ลบกิจกรรม", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-        content: Text(dialogContent, style: GoogleFonts.inter()),
+        title: Text("ลบข้อมูล", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        content: Text("คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลการทานยานี้?", style: GoogleFonts.inter()),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: Text("ยกเลิก", style: GoogleFonts.inter(color: Colors.grey[700]))),
           TextButton(onPressed: () => Navigator.pop(context, true), child: Text("ลบข้อมูล", style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.bold))),
@@ -244,14 +243,13 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
         for (String url in _existingImageUrls) {
           try { await FirebaseStorage.instance.refFromURL(url).delete(); } catch (e) { debugPrint("Storage delete error: $e"); }
         }
-
         await _firestore.collection('dog_activities').doc(widget.eventId).delete();
         await NotificationService.cancelEventNotifications(widget.eventId!);
 
         if (mounted) {
           final messenger = ScaffoldMessenger.of(context);
           Navigator.pop(context); 
-          messenger.showSnackBar(const SnackBar(content: Text("ลบกิจกรรมเรียบร้อยแล้ว"), backgroundColor: Colors.redAccent));
+          messenger.showSnackBar(const SnackBar(content: Text("ลบข้อมูลเรียบร้อยแล้ว"), backgroundColor: Colors.redAccent));
         }
       } catch (e) {
         _showErrorSnackBar("เกิดข้อผิดพลาดในการลบ: $e");
@@ -262,28 +260,23 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
   Future<void> _saveToFirebase() async {
     final DateTime startDateTime = DateTime(widget.selectedDateFromCalendar.year, widget.selectedDateFromCalendar.month, widget.selectedDateFromCalendar.day, _selectedTime.hour, _selectedTime.minute);
 
-    if (_recurrenceData.repeatType == 'weekly' && _recurrenceData.weeklyDays.isEmpty) {
-      _showErrorSnackBar("กรุณาเลือกวันในสัปดาห์อย่างน้อย 1 วัน"); return;
-    }
-
     try {
       showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
 
-      // 🟢 3. เช็คและดึง dog_id ของสุนัขตัวปัจจุบันจาก Provider
       final currentDogId = Provider.of<CurrentDogProvider>(context, listen: false).currentDogId;
       if (currentDogId == null) {
-        Navigator.pop(context); // ปิด Loading
-        _showErrorSnackBar("กรุณาเลือกน้องหมาก่อนบันทึกกิจกรรม");
+        Navigator.pop(context); 
+        _showErrorSnackBar("กรุณาเลือกน้องหมาก่อนบันทึกข้อมูล");
         return;
       }
 
       for (String url in _deletedImageUrls) {
-        try { await FirebaseStorage.instance.refFromURL(url).delete(); } catch (e) { debugPrint("Storage delete orphaned image error: $e"); }
+        try { await FirebaseStorage.instance.refFromURL(url).delete(); } catch (e) { debugPrint("Storage delete error: $e"); }
       }
 
       List<String> uploadedImageUrls = [];
       for (File imageFile in _selectedLocalImages) {
-        String fileName = 'activities/${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
+        String fileName = 'medicines/${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
         Reference ref = FirebaseStorage.instance.ref().child(fileName);
         await ref.putFile(imageFile);
         String downloadUrl = await ref.getDownloadURL();
@@ -297,16 +290,19 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
         if (_recurrenceData.repeatType == 'weekly') recurrencePayload['days_of_week'] = _recurrenceData.weeklyDays;
         if (_recurrenceData.repeatType == 'monthly') recurrencePayload['monthly_mode'] = _recurrenceData.monthlyMode;
         if (_recurrenceData.endDate != null) recurrencePayload['end_date'] = Timestamp.fromDate(_recurrenceData.endDate!);
-        else if (_recurrenceData.count != null) recurrencePayload['count'] = _recurrenceData.count;
       }
 
       Map<String, dynamic> payload = {
-        'type': 'walk',
-        'dog_id': currentDogId, // 🟢 4. เพิ่ม dog_id เข้าไปใน Firestore Payload
+        'type': 'medicine', // 🟢 ตั้งประเภทเป็น medicine
+        'dog_id': currentDogId, 
         'name': _nameController.text,
         'start_time': Timestamp.fromDate(startDateTime), 
-        'duration_minutes': _selectedDuration?.inMinutes ?? 0,
-        'distance_km': _selectedDistance ?? 0.0,
+        
+        // 🟢 บันทึกข้อมูลเฉพาะของยา
+        'dosage_amount': _dosageAmount,
+        'dosage_unit': _dosageUnit,
+        'meal_timing': _mealTiming,
+        
         'note': _noteController.text,
         'reminder_offset_minutes': _selectedReminder, 
         'recurrence': recurrencePayload,
@@ -314,58 +310,52 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
         'updated_at': FieldValue.serverTimestamp(),
       };
 
-      String targetEventId = widget.eventId ?? ""; 
-
+      String targetId;
       if (widget.eventId == null) {
         payload['created_at'] = FieldValue.serverTimestamp();
-        DocumentReference docRef = await _firestore.collection('dog_activities').add(payload);
-        targetEventId = docRef.id; 
+        DocumentReference doc = await _firestore.collection('dog_activities').add(payload);
+        targetId = doc.id;
       } else {
         await _firestore.collection('dog_activities').doc(widget.eventId).update(payload);
-        targetEventId = widget.eventId!;
+        targetId = widget.eventId!;
       }
 
-      String getReminderMessage(int? minutes, String eventName) {
-        if (minutes == null) return "";
-        if (minutes == 0) return "ถึงเวลากิจกรรม $eventName แล้ว!";
-        if (minutes == 60) return "เตรียมตัว! กิจกรรม $eventName (1 ชั่วโมง ก่อนหน้า)";
-        if (minutes == 1440) return "เตรียมตัว! กิจกรรม $eventName (1 วัน ก่อนหน้า)";
-        return "เตรียมตัว! กิจกรรม $eventName ($minutes นาที ก่อนหน้า)";
+      // 🟢 อัปเดตข้อความแจ้งเตือนให้ระบุปริมาณยาและมื้ออาหาร
+      String notificationBody = "ถึงเวลาทานยาแล้ว";
+      if (_dosageAmount.isNotEmpty) {
+        notificationBody += " ($_dosageAmount $_dosageUnit $_mealTiming)";
       }
 
       await NotificationService.scheduleEventNotification(
-        eventId: targetEventId,
-        title: "แจ้งเตือนกิจกรรม: ${_nameController.text}",
-        body: getReminderMessage(_selectedReminder, _nameController.text), 
+        eventId: targetId,
+        title: "แจ้งเตือนทานยา: ${_nameController.text}",
+        body: notificationBody,
         startDateTime: startDateTime,
         reminderMinutes: _selectedReminder,
         recurrenceData: _recurrenceData,
-        payload: targetEventId, 
+        payload: targetId,
       );
 
       if (mounted) {
-        final messenger = ScaffoldMessenger.of(context);
-        Navigator.pop(context); 
-        Navigator.pop(context); 
-        messenger.showSnackBar(const SnackBar(content: Text("บันทึกกิจกรรมเรียบร้อยแล้ว"), backgroundColor: Colors.green));
+        Navigator.pop(context); Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("บันทึกข้อมูลการทานยาเรียบร้อยแล้ว"), backgroundColor: Colors.green));
       }
     } catch (e) {
-      if (mounted) Navigator.pop(context); 
-      debugPrint("Error saving to Firebase: $e");
-      _showErrorSnackBar("เกิดข้อผิดพลาดในการบันทึกข้อมูล: $e");
+      if (mounted) Navigator.pop(context);
+      _showErrorSnackBar("เกิดข้อผิดพลาด: $e");
     }
   }
 
   void _showErrorSnackBar(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.redAccent, duration: const Duration(seconds: 3)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.redAccent));
   }
 
   Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
         IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context)),
-        Expanded(child: Center(child: Text(widget.eventId == null ? "เพิ่มกิจกรรมใหม่" : "รายละเอียดกิจกรรม", style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w500)))),
+        Expanded(child: Center(child: Text(widget.eventId == null ? "เพิ่มข้อมูลการทานยา" : "รายละเอียดการทานยา", style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w500)))),
         if (widget.eventId != null) IconButton(icon: const Icon(Icons.delete, color: Colors.redAccent), onPressed: _deleteEvent)
         else const SizedBox(width: 48),
       ],
@@ -389,7 +379,7 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
             child: Stack(
               alignment: Alignment.bottomRight,
               children: [
-                Container(width: 75, height: 75, decoration: BoxDecoration(color: bg, shape: BoxShape.circle), child: Icon(Icons.pets, color: iconCol, size: 40)),
+                Container(width: 75, height: 75, decoration: BoxDecoration(color: bg, shape: BoxShape.circle), child: Icon(Icons.medication, color: iconCol, size: 40)), // 🟢 เปลี่ยนไอคอนเป็นยา
                 Container(decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: iconCol, width: 1.5)), child: Icon(Icons.add, color: iconCol, size: 20))
               ],
             ),
@@ -397,7 +387,7 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
         ),
       );
     }
-    return Column(children: [SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: imageWidgets)), const SizedBox(height: 10), Text("เดิน", style: GoogleFonts.inter(color: iconCol, fontWeight: FontWeight.bold, fontSize: 16))]);
+    return Column(children: [SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: imageWidgets)), const SizedBox(height: 10), Text("ยา", style: GoogleFonts.inter(color: iconCol, fontWeight: FontWeight.bold, fontSize: 16))]); // 🟢 เปลี่ยน Text ใต้รูป
   }
 
   Widget _buildImageThumbnail({required ImageProvider imageProvider, required Color iconCol, required VoidCallback onRemove}) {
@@ -415,7 +405,7 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
 
   Widget _buildFormRow(String label, Widget child, Color labelColor) => Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [SizedBox(width: 100, child: Text(label, style: GoogleFonts.inter(color: labelColor, fontSize: 14))), Expanded(child: child)]));
   
-  Widget _buildInputBox(TextEditingController controller, String hint) => Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)), child: TextField(controller: controller, maxLines: null, keyboardType: TextInputType.multiline, decoration: InputDecoration(hintText: hint, border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero), style: const TextStyle(fontSize: 14)));
+  Widget _buildInputBox(TextEditingController controller, String hint) => Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)), child: TextField(controller: controller, maxLines: null, decoration: InputDecoration(hintText: hint, border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero), style: const TextStyle(fontSize: 14)));
   
   Widget _buildDivider() => const Divider(height: 20, thickness: 1, color: Color(0xFFF0F0F0));
   
@@ -423,10 +413,58 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
   
   Widget _buildTimePicker(BuildContext context) => InkWell(onTap: () async { final time = await showTimePicker(context: context, initialTime: _selectedTime); if (time != null) setState(() => _selectedTime = time); }, child: Text("${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')} น.", style: const TextStyle(color: Colors.blue)));
   
-  Widget _buildDurationPickerBtn(BuildContext context) => InkWell(onTap: () => showModalBottomSheet(context: context, backgroundColor: Colors.transparent, builder: (_) => DurationPicker(initialDuration: _selectedDuration ?? Duration.zero, onDurationChanged: (d) => setState(() => _selectedDuration = d))), child: Text(_formattedDuration, style: const TextStyle(color: Colors.blue)));
-  
-  Widget _buildDistancePickerBtn(BuildContext context) => InkWell(onTap: () => showModalBottomSheet(context: context, backgroundColor: Colors.transparent, builder: (_) => DistancePicker(initialDistanceKm: _selectedDistance ?? 0.0, onDistanceChanged: (v) => setState(() => _selectedDistance = v))), child: Text(_formattedDistance, style: const TextStyle(color: Colors.blue)));
+  // 🟢 Widget สำหรับเรียก DosagePicker ที่สร้างไว้
+  Widget _buildDosagePickerBtn(BuildContext context) => InkWell(
+    onTap: () {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => DosagePicker(
+          initialAmount: _dosageAmount,
+          initialUnit: _dosageUnit,
+          onDosageChanged: (amount, unit) {
+            setState(() {
+              _dosageAmount = amount;
+              _dosageUnit = unit;
+            });
+          },
+        ),
+      );
+    }, 
+    child: Text(_formattedDosage, style: const TextStyle(color: Colors.blue))
+  );
 
+  // 🟢 Widget สำหรับปุ่ม ก่อนอาหาร / หลังอาหาร
+  Widget _buildMealTimingSelector() {
+    return Row(
+      children: [
+        _buildMealChip('ก่อนอาหาร'),
+        const SizedBox(width: 8),
+        _buildMealChip('หลังอาหาร'),
+      ],
+    );
+  }
+
+  Widget _buildMealChip(String label) {
+    bool isSelected = _mealTiming == label;
+    return ChoiceChip(
+      label: Text(label, style: GoogleFonts.inter(color: isSelected ? Colors.white : Colors.black87, fontSize: 13)),
+      selected: isSelected,
+      selectedColor: const Color(0xFF90C2D8), // สีฟ้าตอนถูกเลือก
+      backgroundColor: Colors.grey[200],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: isSelected ? const Color(0xFF90C2D8) : Colors.transparent)),
+      showCheckmark: false,
+      onSelected: (bool selected) {
+        if (selected) {
+          setState(() {
+            _mealTiming = label;
+          });
+        }
+      },
+    );
+  }
+  
   Widget _buildStickyBottomBar(Color col) {
     return SafeArea(
       child: Container(

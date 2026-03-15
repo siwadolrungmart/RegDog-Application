@@ -1,8 +1,24 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+import 'package:table_calendar/table_calendar.dart';
+import 'package:intl/intl.dart';
+
 import 'package:regdogapp/component/upperbar.dart';
+import 'package:regdogapp/component/bar.dart';
 import 'package:regdogapp/screen/dog_list.dart';
 import 'package:regdogapp/screen/even_calendar.dart/selectevent_screen.dart';
+import 'package:regdogapp/providers/current_dog_provider.dart';
+
+import 'package:regdogapp/screen/even_calendar.dart/walkevent_screen.dart';
+import 'package:regdogapp/screen/even_calendar.dart/playevent_screen.dart';
+import 'package:regdogapp/screen/even_calendar.dart/trainevent_screen.dart';
+import 'package:regdogapp/screen/even_calendar.dart/symptomevent_screen.dart';
+import 'package:regdogapp/screen/even_calendar.dart/vaccinevent_screen.dart';
+import 'package:regdogapp/screen/even_calendar.dart/medicineevent_screen.dart';
+import 'package:regdogapp/screen/even_calendar.dart/vetvisitevent_screen.dart';
 
 class CalendarPage extends StatefulWidget {
   const CalendarPage({super.key});
@@ -12,215 +28,374 @@ class CalendarPage extends StatefulWidget {
 }
 
 class _CalendarPageState extends State<CalendarPage> {
-  // ใช้ DateTime ตัวเดียวเก็บค่าวันที่ที่ถูกเลือกเลย
-  DateTime _selectedDate = DateTime.now();
+  int _currentIndex = 1;
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
 
-  // ข้อมูลตัวอย่างนัดหมาย
-  final List<Map<String, dynamic>> _events = [
-    {
-      'icon': Icons.local_hospital,
-      'title': 'นัดตรวจสุขภาพประจำปี',
-      'time': '14.00 น.',
-      'hasBell': false,
-    },
-    {
-      'icon': Icons.vaccines,
-      'title': 'ฉีดวัคซีน',
-      'time': '15.00 น.',
-      'hasBell': true,
-    },
-  ];
+  List<QueryDocumentSnapshot> _allActivities = [];
+  StreamSubscription<QuerySnapshot>? _activitySubscription;
+  String? _currentDogId;
 
-  String _getMonthName(int month) {
+  @override
+  void initState() {
+    super.initState();
+    _selectedDay = _focusedDay;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final newDogId = Provider.of<CurrentDogProvider>(context).currentDogId;
+
+    if (newDogId != _currentDogId) {
+      _currentDogId = newDogId;
+      _listenToActivities(_currentDogId);
+    }
+  }
+
+  @override
+  void dispose() {
+    _activitySubscription?.cancel();
+    super.dispose();
+  }
+
+  void _listenToActivities(String? dogId) {
+    _activitySubscription?.cancel();
+
+    if (dogId == null || dogId.isEmpty) {
+      if (mounted) setState(() => _allActivities = []);
+      return;
+    }
+
+    _activitySubscription = FirebaseFirestore.instance
+        .collection('dog_activities')
+        .where('dog_id', isEqualTo: dogId)
+        .snapshots()
+        .listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          _allActivities = snapshot.docs;
+        });
+      }
+    });
+  }
+
+  DateTime? _parseDateTime(dynamic field) {
+    if (field == null) return null;
+    if (field is Timestamp) return field.toDate();
+    if (field is String) return DateTime.tryParse(field);
+    return null;
+  }
+
+  bool _isEventOnDay(Map<String, dynamic> data, DateTime targetDay) {
+    DateTime? start = _parseDateTime(data['start_time']);
+    if (start == null) return false;
+
+    DateTime sDate = DateTime(start.year, start.month, start.day);
+    DateTime tDate = DateTime(targetDay.year, targetDay.month, targetDay.day);
+
+    if (tDate.isBefore(sDate)) return false;
+
+    var rec = data['recurrence'];
+    if (rec == null || rec['type'] == 'none') {
+      return sDate.isAtSameMomentAs(tDate);
+    }
+
+    if (rec['end_date'] != null) {
+      DateTime? eDate = _parseDateTime(rec['end_date']);
+      if (eDate != null) {
+        DateTime normalizedEnd = DateTime(eDate.year, eDate.month, eDate.day);
+        if (tDate.isAfter(normalizedEnd)) return false;
+      }
+    }
+
+    String type = rec['type'];
+    int interval = rec['interval'] ?? 1;
+
+    if (type == 'daily') {
+      int diffDays = tDate.difference(sDate).inDays;
+      return diffDays % interval == 0;
+    } else if (type == 'weekly') {
+      List<dynamic> daysOfWeek = rec['days_of_week'] ?? [];
+      if (!daysOfWeek.contains(tDate.weekday)) return false;
+
+      int diffDays = tDate.difference(sDate).inDays;
+      int diffWeeks = diffDays ~/ 7;
+      return diffWeeks % interval == 0;
+    } else if (type == 'monthly') {
+      if (tDate.day != sDate.day) return false;
+      int diffMonths = (tDate.year - sDate.year) * 12 + tDate.month - sDate.month;
+      return diffMonths % interval == 0;
+    } else if (type == 'yearly') {
+      if (tDate.day != sDate.day || tDate.month != sDate.month) return false;
+      int diffYears = tDate.year - sDate.year;
+      return diffYears % interval == 0;
+    }
+
+    return false;
+  }
+
+  List<QueryDocumentSnapshot> _getEventsForDay(DateTime day) {
+    return _allActivities.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      return _isEventOnDay(data, day);
+    }).toList();
+  }
+
+  String _getThaiDate(DateTime date) {
     const months = [
-      'มกราคม',
-      'กุมภาพันธ์',
-      'มีนาคม',
-      'เมษายน',
-      'พฤษภาคม',
-      'มิถุนายน',
-      'กรกฎาคม',
-      'สิงหาคม',
-      'กันยายน',
-      'ตุลาคม',
-      'พฤศจิกายน',
-      'ธันวาคม',
+      'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+      'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
     ];
-    return months[month - 1];
+    return 'วันที่ ${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
+  String _getRecurrenceDateRange(Map<String, dynamic> data, DateTime start) {
+    var rec = data['recurrence'];
+    if (rec == null || rec['type'] == 'none') return '';
+
+    String startStr = '${start.day.toString().padLeft(2, '0')}/${start.month.toString().padLeft(2, '0')}/${start.year}';
+    String endStr = "ไม่มีที่สิ้นสุด";
+
+    if (rec['end_date'] != null) {
+      DateTime? eDate = _parseDateTime(rec['end_date']);
+      if (eDate != null) {
+        endStr = '${eDate.day.toString().padLeft(2, '0')}/${eDate.month.toString().padLeft(2, '0')}/${eDate.year}';
+      }
+    }
+
+    return ' , $startStr - $endStr';
+  }
+
+  IconData _getIconForType(String type) {
+    switch (type) {
+      case 'walk': return Icons.pets;
+      case 'play': return Icons.sports_volleyball;
+      case 'train': return Icons.assignment;
+      case 'symptom': return Icons.note_alt_outlined;
+      case 'health': return Icons.domain;
+      case 'vaccine': return Icons.vaccines;
+      case 'medicine': return Icons.medication;
+      case 'expense': return Icons.payments;
+      default: return Icons.event;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final selectedEvents = _selectedDay != null ? _getEventsForDay(_selectedDay!) : [];
+
     return Scaffold(
+      bottomNavigationBar: CustomBottomNavBar(
+        selectedIndex: _currentIndex,
+        onItemTapped: (index) => setState(() => _currentIndex = index),
+      ),
       body: SafeArea(
-        // 🌟 ครอบด้วย SingleChildScrollView ชั้นนอกสุด เผื่อจอมือถือสั้นกว่า 705px จะได้ไม่ Error
         child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch, // ยืดเต็มความกว้าง
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ส่วน TopBar
               HomeTopBar(
                 showProfile: true,
-                onMenuTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const DogListPage(),
-                    ),
-                  );
-                },
-                onNotificationTap: () => debugPrint("Notification tapped"),
-                onProfileTap: () => debugPrint("Profile tapped"),
+                onMenuTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DogListPage())),
               ),
 
-              // 🌟 การ์ดสีขาว กว้างเต็มจอ สูง 705px
               Container(
                 width: double.infinity,
-                height: 705, // ฟิกซ์ความสูงตามที่ต้องการ
-                margin: const EdgeInsets.all(0),
+                constraints: const BoxConstraints(minHeight: 690),
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
+                  borderRadius: const BorderRadius.all(Radius.circular(15)),
                   boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    ),
+                    BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, -1)),
                   ],
                 ),
-                // 🌟 ให้เนื้อหาด้านใน (ปฏิทิน + การ์ดนัดหมาย) เลื่อนได้
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // ส่วนปฏิทิน
-                      // ส่วนปฏิทิน
-                      // 🌟 1. ใช้ SizedBox ครอบและจำกัดความสูง เพื่อตัดพื้นที่ว่างด้านล่างของปฏิทินทิ้ง
-                      SizedBox(
-                        height:
-                            340, // 💡 ถ้าอยากให้ขยับขึ้นอีก ให้ลดตัวเลขนี้ลง (เช่น 320, 330)
-                        child: Theme(
-                          data: Theme.of(context).copyWith(
-                            colorScheme: Theme.of(context).colorScheme.copyWith(
-                              primary: const Color(
-                                0xFFFFC1CC,
-                              ), // สีตอนกดเลือกวัน
-                              onPrimary: Colors.black87, // สีตัวหนังสือในวงกลม
-                              onSurface:
-                                  Colors.black87, // สีตัวหนังสือวันที่ทั่วไป
-                            ),
-                            textButtonTheme: TextButtonThemeData(
-                              style: TextButton.styleFrom(
-                                foregroundColor:
-                                    Colors.black87, // สีปุ่มสลับปี/เดือน
-                              ),
-                            ),
-                          ),
-                          child: CalendarDatePicker(
-                            initialDate: _selectedDate,
-                            firstDate: DateTime(2000),
-                            lastDate: DateTime(2100),
-                            onDateChanged: (DateTime newDate) {
-                              setState(() {
-                                _selectedDate = newDate;
-                              });
-
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'วันที่ ${newDate.day} ${_getMonthName(newDate.month)} ${newDate.year + 543}',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TableCalendar<QueryDocumentSnapshot>(
+                      locale: 'th_TH',
+                      firstDay: DateTime.utc(2000, 1, 1),
+                      lastDay: DateTime.utc(2100, 12, 31),
+                      focusedDay: _focusedDay,
+                      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                      onDaySelected: (selectedDay, focusedDay) {
+                        setState(() {
+                          _selectedDay = selectedDay;
+                          _focusedDay = focusedDay;
+                        });
+                      },
+                      onHeaderTapped: (focusedDay) {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: Center(child: Text("เลือกปี", style: GoogleFonts.inter(fontWeight: FontWeight.bold))),
+                              content: SizedBox(
+                                width: 300, height: 300,
+                                child: Theme(
+                                  data: Theme.of(context).copyWith(colorScheme: const ColorScheme.light(primary: Color(0xFF90C2D8))),
+                                  child: YearPicker(
+                                    firstDate: DateTime(2000), lastDate: DateTime(2100), selectedDate: _focusedDay,
+                                    onChanged: (DateTime pickedYear) {
+                                      setState(() {
+                                        _focusedDay = DateTime(pickedYear.year, _focusedDay.month, _focusedDay.day);
+                                        _selectedDay = _focusedDay;
+                                      });
+                                      Navigator.pop(context);
+                                    },
                                   ),
-                                  duration: const Duration(seconds: 2),
                                 ),
-                              );
-                            },
-                          ),
-                        ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                      eventLoader: _getEventsForDay,
+                      daysOfWeekStyle: const DaysOfWeekStyle(
+                        weekendStyle: TextStyle(color: Colors.black87),
+                        weekdayStyle: TextStyle(color: Colors.black87),
                       ),
+                      calendarStyle: const CalendarStyle(
+                        outsideDaysVisible: false,
+                        weekendTextStyle: TextStyle(color: Colors.black87),
+                        defaultTextStyle: TextStyle(color: Colors.black87),
+                        todayDecoration: BoxDecoration(color: Color(0xFFFFC1CC), shape: BoxShape.circle),
+                        selectedDecoration: BoxDecoration(color: Color(0xFF90C2D8), shape: BoxShape.circle),
+                        markerSize: 0,
+                      ),
+                      headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
+                      calendarBuilders: CalendarBuilders(
+                        markerBuilder: (context, date, events) {
+                          if (events.isEmpty) return const SizedBox();
 
-                      // 🌟 2. ปรับความสูงของเส้นคั่นให้น้อยลง เพื่อให้ติดปฏิทินมากขึ้น
-                      const Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: Color(0xFFEEEEEE),
-                      ),
-                      const SizedBox(
-                        height: 16,
-                      ), // ระยะห่างระหว่างเส้นคั่นกับข้อความด้านล่าง
-                      // ส่วนข้อความบอกวันที่
-                      Text(
-                        'วันที่ ${_selectedDate.day} ${_getMonthName(_selectedDate.month)}',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
+                          // 🟢 Logic แยกหมวดหมู่ไอคอน
+                          bool hasActivity = false; // เดิน, เล่น, ฝึก
+                          bool hasHealth = false;   // อาการ, วัคซีน, ยา, พบสัตว์แพทย์
+                          bool hasExpense = false;  // ค่าใช้จ่าย
 
-                      // ส่วนรายการนัดหมาย
-                      ..._events.map((event) {
+                          for (var event in events) {
+                            final data = event.data() as Map<String, dynamic>;
+                            final type = data['type'] ?? '';
+
+                            if (['walk', 'play', 'train'].contains(type)) {
+                              hasActivity = true;
+                            } else if (['symptom', 'health', 'vaccine', 'medicine'].contains(type)) {
+                              hasHealth = true;
+                            } else if (type == 'expense') {
+                              hasExpense = true;
+                            }
+                          }
+
+                          List<Widget> iconsToShow = [];
+                          if (hasActivity) {
+                            iconsToShow.add(const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 1.0),
+                              child: Icon(Icons.bolt, size: 14, color: Color(0xFF6A97A8)),
+                            ));
+                          }
+                          if (hasHealth) {
+                            iconsToShow.add(const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 1.0),
+                              child: Icon(Icons.health_and_safety, size: 14, color: Color(0xFF6A97A8)),
+                            ));
+                          }
+                          if (hasExpense) {
+                            iconsToShow.add(const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 1.0),
+                              child: Icon(Icons.payments, size: 14, color: Color(0xFF6A97A8)),
+                            ));
+                          }
+
+                          return Positioned(
+                            bottom: 1,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: iconsToShow,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+
+                    const Divider(height: 30, thickness: 1, color: Color(0xFFEEEEEE)),
+                    
+                    Text(
+                      _selectedDay != null ? _getThaiDate(_selectedDay!) : '',
+                      style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 12),
+
+                    if (selectedEvents.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        child: Center(child: Text("ไม่มีกิจกรรมในวันนี้", style: GoogleFonts.inter(color: Colors.grey))),
+                      )
+                    else
+                      ...selectedEvents.map((eventDoc) {
+                        final data = eventDoc.data() as Map<String, dynamic>;
+                        final startTime = _parseDateTime(data['start_time']) ?? DateTime.now(); 
+                        final isReminderSet = data['reminder_offset_minutes'] != null;
+                        
+                        final recurrenceStr = _getRecurrenceDateRange(data, startTime);
+
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: EventCard(
-                            icon: event['icon'] as IconData,
-                            title: event['title'] as String,
-                            time: event['time'] as String,
-                            hasBell: event['hasBell'] as bool,
+                            icon: _getIconForType(data['type']),
+                            title: data['name'] ?? 'ไม่มีชื่อ',
+                            time: DateFormat('HH:mm น.').format(startTime), 
+                            recurrenceText: recurrenceStr.isNotEmpty ? recurrenceStr : null, 
+                            hasBell: isReminderSet,
                             onTap: () {
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'ดูรายละเอียด: ${event['title']}',
-                                    ),
-                                    duration: const Duration(seconds: 2),
-                                  ),
-                                );
+                              final targetDate = _selectedDay ?? DateTime.now();
+                              final dateToPass = DateTime(
+                                targetDate.year,
+                                targetDate.month,
+                                targetDate.day,
+                                startTime.hour,
+                                startTime.minute,
+                              );
+
+                              if (data['type'] == 'play') {
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => AddPlayEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
+                              } else if (data['type'] == 'train') { 
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => AddTrainEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
+                              } else if (data['type'] == 'symptom') { 
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => AddSymptomEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
+                              } else if (data['type'] == 'vaccine') { 
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => AddVaccineEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
+                              } else if (data['type'] == 'walk') {
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => AddWalkEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
+                              } else if (data['type'] == 'medicine') {
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => AddMedicineEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
+                              } else if (data['type'] == 'health') {
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => AddVetVisitEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
                               }
                             },
                           ),
                         );
                       }).toList(),
 
-                      // ปุ่ม + (บวก) สำหรับเพิ่มนัดหมาย
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Material(
-                          color: const Color(0xFFFEF0B3), // สีเหลืองอ่อน
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Material(
+                        color: const Color(0xFFFEF0B3),
+                        borderRadius: BorderRadius.circular(8),
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => EventCategoryPage(selectedDate: _selectedDay ?? DateTime.now())));
+                          },
                           borderRadius: BorderRadius.circular(8),
-                          child: InkWell(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const EventCategoryPage(),
-                                ),
-                              );
-                            },
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              width: 44,
-                              height: 44,
-                              alignment: Alignment.center,
-                              child: const Icon(
-                                Icons.add,
-                                color: Colors.black87,
-                                size: 26,
-                              ),
-                            ),
-                          ),
+                          child: Container(width: 44, height: 44, alignment: Alignment.center, child: const Icon(Icons.add, color: Colors.black87, size: 26)),
                         ),
                       ),
+                    ),
 
-                      const SizedBox(height: 32), // เว้นระยะล่างสุดกันติดขอบ
-                    ],
-                  ),
+                    const SizedBox(height: 100), 
+                  ],
                 ),
               ),
             ],
@@ -231,13 +406,11 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 }
 
-// ────────────────────────────────────────────────
-// Event Card
-// ────────────────────────────────────────────────
 class EventCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String time;
+  final String? recurrenceText; 
   final bool hasBell;
   final VoidCallback? onTap;
 
@@ -246,6 +419,7 @@ class EventCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.time,
+    this.recurrenceText,
     this.hasBell = false,
     this.onTap,
   });
@@ -286,11 +460,23 @@ class EventCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    time,
-                    style: GoogleFonts.mitr(
-                      fontSize: 14,
-                      color: Colors.grey[700],
+                  RichText(
+                    text: TextSpan(
+                      text: time, 
+                      style: GoogleFonts.mitr(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                      children: [
+                        if (recurrenceText != null)
+                          TextSpan(
+                            text: recurrenceText, 
+                            style: GoogleFonts.mitr(
+                              fontSize: 12,
+                              color: Colors.blue[600], 
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ],

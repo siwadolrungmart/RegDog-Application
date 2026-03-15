@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // 🟢 เพิ่ม import firebase_auth
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -9,14 +10,14 @@ import 'package:regdogapp/service/dogdatabase_service.dart';
 import 'package:regdogapp/providers/current_dog_provider.dart';
 
 class Homepage extends StatefulWidget {
-  const Homepage({super.key});
+  const Homepage({super.key}); // 🟢 ไม่มีการบังคับรับ dogId ตรงนี้แล้ว
 
   @override
   State<Homepage> createState() => _HomepageState();
 }
 
 class _HomepageState extends State<Homepage> {
-  int _currentIndex = 2;
+  int _currentIndex = 2; // หน้าแรกคือ index 2
   final DatabaseService _db = DatabaseService();
 
   @override
@@ -32,11 +33,15 @@ class _HomepageState extends State<Homepage> {
     // ถ้ายังไม่มีสุนัขที่เลือก
     if (provider.currentDogId == null || provider.currentDogId!.isEmpty) {
       try {
-        final dogs = await _db.getDogsByOwner('temp_user_123').first;
-        if (dogs.docs.isNotEmpty) {
-          final firstDoc = dogs.docs.first;
-          final data = firstDoc.data() as Map<String, dynamic>;
-          provider.selectDog(firstDoc.id, data);
+        // 🟢 เปลี่ยนจาก 'temp_user_123' เป็น UID ของผู้ใช้ที่ล็อกอินอยู่จริงๆ
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final dogs = await _db.getDogsByOwner(user.uid).first;
+          if (dogs.docs.isNotEmpty) {
+            final firstDoc = dogs.docs.first;
+            final data = firstDoc.data() as Map<String, dynamic>;
+            provider.selectDog(firstDoc.id, data);
+          }
         }
       } catch (e) {
         debugPrint("โหลดสุนัขตัวแรกอัตโนมัติล้มเหลว: $e");
@@ -68,6 +73,7 @@ class _HomepageState extends State<Homepage> {
             Expanded(
               child: Consumer<CurrentDogProvider>(
                 builder: (context, provider, child) {
+                  // ถ้าพยายามดึงข้อมูลแล้วแต่ยังไม่มีน้องหมาเลยจริงๆ (Data เป็น null)
                   if (provider.currentDogData == null) {
                     return Center(
                       child: Column(
@@ -90,6 +96,8 @@ class _HomepageState extends State<Homepage> {
                       ),
                     );
                   }
+                  
+                  // ถัามีข้อมูลน้องหมาให้แสดงผล
                   return SingleChildScrollView(
                     padding: const EdgeInsets.all(20.0),
                     child: Column(
@@ -98,7 +106,7 @@ class _HomepageState extends State<Homepage> {
                         // รูปสุนัข
                         ClipRRect(
                           borderRadius: BorderRadius.circular(20),
-                          child: _buildDogImage(provider.currentDogData?['imageUrl']),
+                          child: _buildDogImage(provider.currentDogData?['photoUrl'] ?? provider.currentDogData?['imageUrl']), // เผื่อฟิลด์ใช้ชื่อ photoUrl
                         ),
                         const SizedBox(height: 16),
                         // ชื่อสุนัข
@@ -120,21 +128,18 @@ class _HomepageState extends State<Homepage> {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        // ข้อมูลเพิ่มเติม (เช่น อายุ, เพศ, น้ำหนัก)
-                        _buildInfoRow(
-                          'อายุ',
-                          provider.currentDogData?['age']?.toString() ?? '-',
-                          'ปี',
-                        ),
+                        // ข้อมูลเพิ่มเติม
                         _buildInfoRow(
                           'เพศ',
                           provider.currentDogData?['gender'] ?? '-',
                           '',
                         ),
                         _buildInfoRow(
-                          'น้ำหนัก',
-                          provider.currentDogData?['weight']?.toString() ?? '-',
-                          'กก.',
+                          'โรคประจำตัว',
+                          provider.currentDogData?['diseases'] != null && provider.currentDogData!['diseases'].toString().isNotEmpty 
+                              ? provider.currentDogData!['diseases'] 
+                              : 'ไม่มี',
+                          '',
                         ),
                       ],
                     ),
@@ -197,7 +202,7 @@ class _HomepageState extends State<Homepage> {
             ),
           ),
           Text(
-            '$value $unit',
+            unit.isNotEmpty ? '$value $unit' : value,
             style: GoogleFonts.inter(
               fontSize: 16,
               color: Colors.grey[700],
