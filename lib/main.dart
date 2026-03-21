@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:regdogapp/screen/login_screen.dart';
 import 'package:regdogapp/screen/navbar_screen/calendar_screen.dart';
 import 'package:regdogapp/providers/current_dog_provider.dart';
+import 'package:regdogapp/screen/navbar_screen/places_screen.dart';
 import 'package:regdogapp/service/notification_service.dart'; 
 import 'firebase_options.dart';
 
