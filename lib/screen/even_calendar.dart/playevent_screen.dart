@@ -176,8 +176,7 @@ class _AddPlayEventPageState extends State<AddPlayEventPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Center(child: Text("ข้อมูลกิจกรรม", style: GoogleFonts.inter(fontWeight: FontWeight.w500))),
-                          const SizedBox(height: 15),
+                          
                           _buildFormRow("ชื่อ:", _buildInputBox(_nameController, "ชื่อกิจกรรม"), textLabelBlue),
                           _buildDivider(),
                           _buildFormRow("วัน:", _buildPlainText(_getThaiDate(widget.selectedDateFromCalendar)), textLabelBlue),

@@ -173,8 +173,7 @@ class _AddVetVisitEventPageState extends State<AddVetVisitEventPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Center(child: Text("ข้อมูลสุขภาพ", style: GoogleFonts.inter(fontWeight: FontWeight.w500))),
-                          const SizedBox(height: 15),
+                         
                           _buildFormRow("ชื่อ:", _buildInputBox(_nameController, "ชื่อกิจกรรม/อาการ"), textLabelBlue),
                           _buildDivider(),
                           _buildFormRow("วัน:", _buildPlainText(_getThaiDate(widget.selectedDateFromCalendar)), textLabelBlue),

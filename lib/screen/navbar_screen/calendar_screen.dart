@@ -19,6 +19,7 @@ import 'package:regdogapp/screen/even_calendar.dart/symptomevent_screen.dart';
 import 'package:regdogapp/screen/even_calendar.dart/vaccinevent_screen.dart';
 import 'package:regdogapp/screen/even_calendar.dart/medicineevent_screen.dart';
 import 'package:regdogapp/screen/even_calendar.dart/vetvisitevent_screen.dart';
+import 'package:regdogapp/screen/even_calendar.dart/expense_screen.dart';
 
 class CalendarPage extends StatefulWidget {
   const CalendarPage({super.key});
@@ -185,6 +186,102 @@ class _CalendarPageState extends State<CalendarPage> {
   Widget build(BuildContext context) {
     final selectedEvents = _selectedDay != null ? _getEventsForDay(_selectedDay!) : [];
 
+    // 🟢 1. จัดกลุ่มข้อมูล
+    List<QueryDocumentSnapshot> activityEvents = [];
+    List<QueryDocumentSnapshot> healthEvents = [];
+    List<QueryDocumentSnapshot> expenseEvents = [];
+
+    for (var event in selectedEvents) {
+      final data = event.data() as Map<String, dynamic>;
+      final type = data['type'] ?? '';
+      if (['walk', 'play', 'train'].contains(type)) {
+        activityEvents.add(event);
+      } else if (['symptom', 'health', 'vaccine', 'medicine'].contains(type)) {
+        healthEvents.add(event);
+      } else if (type == 'expense') {
+        expenseEvents.add(event);
+      }
+    }
+
+    // 🟢 2. ฟังก์ชันสำหรับเรียงลำดับเวลา (น้อยไปมาก / 00:00 ไป 23:59)
+    int compareTimes(QueryDocumentSnapshot a, QueryDocumentSnapshot b) {
+      final timeA = _parseDateTime((a.data() as Map<String, dynamic>)['start_time']) ?? DateTime.now();
+      final timeB = _parseDateTime((b.data() as Map<String, dynamic>)['start_time']) ?? DateTime.now();
+      return timeA.compareTo(timeB); 
+    }
+
+    activityEvents.sort(compareTimes);
+    healthEvents.sort(compareTimes);
+    expenseEvents.sort(compareTimes);
+
+    // 🟢 3. ฟังก์ชันช่วยสร้าง Group ของ UI แต่ละหมวดหมู่
+    Widget buildEventGroup(String title, List<QueryDocumentSnapshot> eventsList) {
+      if (eventsList.isEmpty) return const SizedBox(); // ถ้าไม่มีข้อมูล ไม่ต้องแสดงหมวดหมู่นี้
+      
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 10),
+            child: Text(
+              title,
+              style: GoogleFonts.inter(
+                fontSize: 15, 
+                fontWeight: FontWeight.bold, 
+                color: const Color(0xFF6A97A8)
+              ),
+            ),
+          ),
+          ...eventsList.map((eventDoc) {
+            final data = eventDoc.data() as Map<String, dynamic>;
+            final startTime = _parseDateTime(data['start_time']) ?? DateTime.now(); 
+            final isReminderSet = data['reminder_offset_minutes'] != null;
+            final recurrenceStr = _getRecurrenceDateRange(data, startTime);
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: EventCard(
+                icon: _getIconForType(data['type']),
+                title: data['name'] ?? 'ไม่มีชื่อ',
+                time: DateFormat('HH:mm น.').format(startTime), 
+                recurrenceText: recurrenceStr.isNotEmpty ? recurrenceStr : null, 
+                hasBell: isReminderSet,
+                onTap: () {
+                  final targetDate = _selectedDay ?? DateTime.now();
+                  final dateToPass = DateTime(
+                    targetDate.year,
+                    targetDate.month,
+                    targetDate.day,
+                    startTime.hour,
+                    startTime.minute,
+                  );
+
+                  if (data['type'] == 'play') {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => AddPlayEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
+                  } else if (data['type'] == 'train') { 
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => AddTrainEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
+                  } else if (data['type'] == 'symptom') { 
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => AddSymptomEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
+                  } else if (data['type'] == 'vaccine') { 
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => AddVaccineEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
+                  } else if (data['type'] == 'walk') {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => AddWalkEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
+                  } else if (data['type'] == 'medicine') {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => AddMedicineEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
+                  } else if (data['type'] == 'health') {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => AddVetVisitEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
+                  } else if (data['type'] == 'expense') {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => AddExpenseEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
+                  }
+                },
+              ),
+            );
+          }).toList(),
+          const SizedBox(height: 0), // เว้นระยะห่างระหว่างกลุ่ม
+        ],
+      );
+    }
+
     return Scaffold(
       bottomNavigationBar: CustomBottomNavBar(
         selectedIndex: _currentIndex,
@@ -271,10 +368,9 @@ class _CalendarPageState extends State<CalendarPage> {
                         markerBuilder: (context, date, events) {
                           if (events.isEmpty) return const SizedBox();
 
-                          // 🟢 Logic แยกหมวดหมู่ไอคอน
-                          bool hasActivity = false; // เดิน, เล่น, ฝึก
-                          bool hasHealth = false;   // อาการ, วัคซีน, ยา, พบสัตว์แพทย์
-                          bool hasExpense = false;  // ค่าใช้จ่าย
+                          bool hasActivity = false; 
+                          bool hasHealth = false;   
+                          bool hasExpense = false;  
 
                           for (var event in events) {
                             final data = event.data() as Map<String, dynamic>;
@@ -328,56 +424,17 @@ class _CalendarPageState extends State<CalendarPage> {
                     ),
                     const SizedBox(height: 12),
 
+                    // 🟢 4. นำฟังก์ชัน buildEventGroup มาแสดงผลตามลำดับที่ต้องการ
                     if (selectedEvents.isEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 20),
                         child: Center(child: Text("ไม่มีกิจกรรมในวันนี้", style: GoogleFonts.inter(color: Colors.grey))),
                       )
-                    else
-                      ...selectedEvents.map((eventDoc) {
-                        final data = eventDoc.data() as Map<String, dynamic>;
-                        final startTime = _parseDateTime(data['start_time']) ?? DateTime.now(); 
-                        final isReminderSet = data['reminder_offset_minutes'] != null;
-                        
-                        final recurrenceStr = _getRecurrenceDateRange(data, startTime);
-
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: EventCard(
-                            icon: _getIconForType(data['type']),
-                            title: data['name'] ?? 'ไม่มีชื่อ',
-                            time: DateFormat('HH:mm น.').format(startTime), 
-                            recurrenceText: recurrenceStr.isNotEmpty ? recurrenceStr : null, 
-                            hasBell: isReminderSet,
-                            onTap: () {
-                              final targetDate = _selectedDay ?? DateTime.now();
-                              final dateToPass = DateTime(
-                                targetDate.year,
-                                targetDate.month,
-                                targetDate.day,
-                                startTime.hour,
-                                startTime.minute,
-                              );
-
-                              if (data['type'] == 'play') {
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => AddPlayEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
-                              } else if (data['type'] == 'train') { 
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => AddTrainEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
-                              } else if (data['type'] == 'symptom') { 
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => AddSymptomEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
-                              } else if (data['type'] == 'vaccine') { 
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => AddVaccineEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
-                              } else if (data['type'] == 'walk') {
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => AddWalkEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
-                              } else if (data['type'] == 'medicine') {
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => AddMedicineEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
-                              } else if (data['type'] == 'health') {
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => AddVetVisitEventPage(selectedDateFromCalendar: dateToPass, eventId: eventDoc.id, eventData: data)));
-                              }
-                            },
-                          ),
-                        );
-                      }).toList(),
+                    else ...[
+                      buildEventGroup("กิจกรรม", activityEvents),
+                      buildEventGroup("สุขภาพ", healthEvents),
+                      buildEventGroup("ค่าใช้จ่าย", expenseEvents),
+                    ],
 
                     Align(
                       alignment: Alignment.centerRight,

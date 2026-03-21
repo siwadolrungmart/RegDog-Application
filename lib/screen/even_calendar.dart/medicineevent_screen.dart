@@ -181,8 +181,7 @@ class _AddMedicineEventPageState extends State<AddMedicineEventPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Center(child: Text("ข้อมูลการทานยา", style: GoogleFonts.inter(fontWeight: FontWeight.w500))),
-                          const SizedBox(height: 15),
+                          
                           _buildFormRow("ชื่อ:", _buildInputBox(_nameController, "ชื่อยา"), textLabelBlue),
                           _buildDivider(),
                           _buildFormRow("วัน:", _buildPlainText(_getThaiDate(widget.selectedDateFromCalendar)), textLabelBlue),

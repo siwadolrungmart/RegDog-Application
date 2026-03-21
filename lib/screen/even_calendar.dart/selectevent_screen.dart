@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:regdogapp/component/upperbar.dart';
 import 'package:regdogapp/component/bar.dart'; 
 import 'package:regdogapp/screen/dog_list.dart';
+import 'package:regdogapp/screen/even_calendar.dart/expense_screen.dart';
 import 'package:regdogapp/screen/even_calendar.dart/medicineevent_screen.dart';
 
 // Import หน้าบันทึกต่างๆ 
@@ -156,14 +157,15 @@ class _EventCategoryPageState extends State<EventCategoryPage> {
                     const SizedBox(height: 15),
 
                     // --- หมวดหมู่ค่าใช้จ่าย ---
-                    CategorySection(
-                      title: "ค่าใช้จ่าย",
-                      titleIcon: Icons.payments, // 🟢 เปลี่ยนให้ตรงกับไอคอนด้านล่าง
-                      iconColor: const Color(0xFF2E86C1), // 🟢 สีน้ำเงิน
-                      items: const [
-                        {'label': 'ค่าใช้จ่าย', 'icon': Icons.payments, 'page': null},
-                      ],
-                    ),
+                   // ✅ ถูกต้อง ลบ const ออก
+CategorySection(
+  title: "ค่าใช้จ่าย",
+  titleIcon: Icons.payments, 
+  iconColor: const Color(0xFF2E86C1), 
+  items: [ // <--- ลบ const ออกไปแล้ว
+    {'label': 'ค่าใช้จ่าย', 'icon': Icons.payments, 'page': AddExpenseEventPage(selectedDateFromCalendar: widget.selectedDate)},
+  ],
+),
 
                     const SizedBox(height: 25), 
                     const SizedBox(height: 100), 

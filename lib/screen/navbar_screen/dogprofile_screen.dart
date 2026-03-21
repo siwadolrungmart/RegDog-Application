@@ -810,7 +810,7 @@ class ProfileHeader extends StatelessWidget {
     } else if (dogImage.isNotEmpty && dogImage.startsWith('http')) {
       imageProvider = NetworkImage(dogImage);
     } else {
-      imageProvider = const AssetImage('assets/images/dog.jpg');
+      imageProvider = const AssetImage('assets/images/dog.png');
     }
 
     return Center(

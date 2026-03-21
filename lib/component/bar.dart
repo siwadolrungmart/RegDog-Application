@@ -41,7 +41,7 @@ class CustomBottomNavBar extends StatelessWidget {
         page = const Homepage();
         break;
       case 3:
-        page = const PlacesPage(); 
+        page = const DogMapScreen(); 
         break;
       case 4:
         page = const DogProfilePage(); 

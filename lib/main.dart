@@ -4,8 +4,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:regdogapp/screen/login_screen.dart';
-
-// Import หน้าจอและ Service ต่างๆ (ตรวจสอบ Path ให้ถูกต้องตามโปรเจกต์)
 import 'package:regdogapp/screen/navbar_screen/calendar_screen.dart';
 import 'package:regdogapp/providers/current_dog_provider.dart';
 import 'package:regdogapp/service/notification_service.dart'; 
@@ -18,7 +16,6 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // 🟢 Initialize ระบบแจ้งเตือน
   await NotificationService.init();
 
   runApp(
