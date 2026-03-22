@@ -10,7 +10,7 @@ import GoogleMaps // 👈 1. เพิ่มบรรทัดนี้
   ) -> Bool {
     
     // 🔴 2. เพิ่มตรงนี้! ใส่ API Key ของคุณในเครื่องหมายคำพูด
-    GMSServices.provideAPIKey("AIzaSyAhS_XGmiGoiEOV-tFyXcuMb4YLvIOVXTo") 
+    GMSServices.provideAPIKey("AIzaSyC2ZsplIdFTiU5yK9oyq5N1Nu-s72_tWM4") 
     
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
