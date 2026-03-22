@@ -82,10 +82,10 @@ class _RegDogAppState extends State<RegDogApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [
+      supportedLocales: const [ 
         Locale('th', 'TH'),
       ],
-      home: const LoginScreen(),
+      home: const  PlacePage(),
     );
   }
 }

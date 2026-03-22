@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+// 🟢 1. Import 2 ตัวนี้เพิ่มเข้ามาสำหรับการจัดการนิ้วสัมผัส (Gestures)
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 
 class CustomMapView extends StatefulWidget {
   // รับข้อมูลหมุด (Markers) มาจากหน้าหลัก
@@ -29,37 +32,44 @@ class _CustomMapViewState extends State<CustomMapView> {
 
   // ฟังก์ชันสำหรับขออนุญาตและดึงพิกัดปัจจุบันของผู้ใช้
   Future<void> _getUserLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+    try {
+      bool serviceEnabled;
+      LocationPermission permission;
 
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return Future.error('Location services are disabled.');
-    }
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return Future.error('Location permissions are denied');
+      serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        debugPrint('Location services are disabled.');
+        return;
       }
-    }
-    
-    if (permission == LocationPermission.deniedForever) {
-      return Future.error('Location permissions are permanently denied.');
-    } 
 
-    Position position = await Geolocator.getCurrentPosition();
-    
-    if (mapController != null) {
-      mapController!.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: LatLng(position.latitude, position.longitude),
-            zoom: 15.0,
+      permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          debugPrint('Location permissions are denied');
+          return;
+        }
+      }
+      
+      if (permission == LocationPermission.deniedForever) {
+        debugPrint('Location permissions are permanently denied.');
+        return;
+      } 
+
+      Position position = await Geolocator.getCurrentPosition();
+      
+      if (mapController != null) {
+        mapController!.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: LatLng(position.latitude, position.longitude),
+              zoom: 14.0, 
+            ),
           ),
-        ),
-      );
+        );
+      }
+    } catch (e) {
+      debugPrint("Error getting location: $e");
     }
   }
 
@@ -82,15 +92,26 @@ class _CustomMapViewState extends State<CustomMapView> {
         child: GoogleMap(
           initialCameraPosition: CameraPosition(
             target: _initialPosition,
-            zoom: 14.0,
+            zoom: 14.0, 
           ),
-          markers: widget.markers, // ✅ ใช้ markers ที่ส่งมาจากหน้าหลัก
+          markers: widget.markers, 
           onMapCreated: (GoogleMapController controller) {
             mapController = controller;
           },
           myLocationEnabled: true, 
           myLocationButtonEnabled: true, 
-          zoomControlsEnabled: false,
+          zoomControlsEnabled: false, // ซ่อนปุ่ม +/- บนหน้าจอ
+          
+          // 🟢 2. เปิดให้ใช้นิ้วซูมและเลื่อนได้
+          zoomGesturesEnabled: true, 
+          scrollGesturesEnabled: true,
+          
+          // 🟢 3. เพิ่ม gestureRecognizers เพื่อให้แผนที่ใช้งานได้แม้จะอยู่ในหน้าที่ไถขึ้นลงได้
+          gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+            Factory<OneSequenceGestureRecognizer>(
+              () => EagerGestureRecognizer(),
+            ),
+          },
         ),
       ),
     );

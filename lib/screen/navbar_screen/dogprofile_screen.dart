@@ -16,6 +16,24 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 
+import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:regdogapp/component/upperbar.dart';
+import 'package:regdogapp/component/bar.dart';
+import 'package:regdogapp/screen/dog_list.dart';
+import 'package:regdogapp/service/dogdatabase_service.dart';
+import 'package:regdogapp/providers/current_dog_provider.dart';
+import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/services.dart';
+
 class DogProfilePage extends StatefulWidget {
   const DogProfilePage({super.key});
 
@@ -33,8 +51,10 @@ class _DogProfilePageState extends State<DogProfilePage> {
   late TextEditingController breedController;
   late TextEditingController microchipController;
   late TextEditingController diseasesController;
-  late TextEditingController
-  weightController; // 🟢 เพิ่ม Controller สำหรับน้ำหนัก
+  late TextEditingController weightController; 
+  late TextEditingController birthDateController; 
+  late TextEditingController ageController; // 🟢 เพิ่ม Controller สำหรับอายุ
+
   String gender = '';
   DateTime? birthDate;
 
@@ -46,12 +66,17 @@ class _DogProfilePageState extends State<DogProfilePage> {
   void initState() {
     super.initState();
     initializeDateFormatting('th');
+    
+    // 🟢 กำหนดค่า Controller ทั้งหมดก่อน เพื่อป้องกัน LateInitializationError
     nameController = TextEditingController();
     breedController = TextEditingController();
     microchipController = TextEditingController();
     diseasesController = TextEditingController();
-    weightController = TextEditingController(); // 🟢
+    weightController = TextEditingController(); 
+    birthDateController = TextEditingController(); 
+    ageController = TextEditingController();
 
+    // 🟢 แล้วค่อยสั่งดึงข้อมูล
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncWithProvider();
     });
@@ -63,7 +88,9 @@ class _DogProfilePageState extends State<DogProfilePage> {
     breedController.dispose();
     microchipController.dispose();
     diseasesController.dispose();
-    weightController.dispose(); // 🟢
+    weightController.dispose(); 
+    birthDateController.dispose(); 
+    ageController.dispose(); // 🟢 อย่าลืม dispose
     super.dispose();
   }
 
@@ -102,12 +129,13 @@ class _DogProfilePageState extends State<DogProfilePage> {
   }
 
   void _resetLocalFields() {
+    if (!mounted) return; // 🟢 ป้องกัน Error กรณี Widget ถูกทำลายไปแล้ว
+
     final provider = Provider.of<CurrentDogProvider>(context, listen: false);
     nameController.text = provider.dogName;
     breedController.text = provider.dogBreed;
     gender = provider.dogGender;
 
-    // ดึงวันเกิดจาก Timestamp โดยตรง
     final rawData = provider.currentDogData ?? {};
     if (rawData['birthDate'] is Timestamp) {
       birthDate = (rawData['birthDate'] as Timestamp).toDate();
@@ -118,11 +146,11 @@ class _DogProfilePageState extends State<DogProfilePage> {
     microchipController.text = provider.dogMicrochip;
     diseasesController.text = provider.dogDiseases;
 
-    // 🟢 ดึงค่าน้ำหนักปัจจุบันมาใส่ช่องกรอก
     final currentWeight = rawData['weight'];
-    weightController.text = currentWeight != null
-        ? currentWeight.toString()
-        : '';
+    weightController.text = currentWeight != null ? currentWeight.toString() : '';
+    
+    birthDateController.text = _getFormattedBirthDate(); 
+    ageController.text = _getAge(); // 🟢 เซ็ตค่าอายุเริ่มต้นให้ Controller
 
     _newProfileImage = null;
     _newPedigreeFile = null;
@@ -131,13 +159,11 @@ class _DogProfilePageState extends State<DogProfilePage> {
     setState(() {});
   }
 
-  // จัด Format วันที่แบบ "11 มีนาคม 2026" (d MMMM yyyy)
   String _getFormattedBirthDate() {
     if (birthDate == null) return 'ไม่ทราบวันที่';
     return DateFormat('d MMMM yyyy', 'th').format(birthDate!);
   }
 
-  // การคำนวณอายุแบบละเอียด (ปี เดือน วัน)
   String _getAge() {
     if (birthDate == null) return 'ไม่ทราบอายุ';
     final now = DateTime.now();
@@ -178,6 +204,8 @@ class _DogProfilePageState extends State<DogProfilePage> {
     if (picked != null && mounted) {
       setState(() {
         birthDate = picked;
+        birthDateController.text = _getFormattedBirthDate(); 
+        ageController.text = _getAge(); // 🟢 อัปเดตอายุทันทีเมื่อเลือกวันเกิด
       });
     }
   }
@@ -268,7 +296,6 @@ class _DogProfilePageState extends State<DogProfilePage> {
       if (url != null) finalPedigreeUrl = url;
     }
 
-    // 🟢 แปลงค่าน้ำหนักจากช่องกรอกเป็นตัวเลข
     double? newWeightValue;
     if (weightController.text.trim().isNotEmpty) {
       newWeightValue = double.tryParse(weightController.text.trim());
@@ -284,11 +311,10 @@ class _DogProfilePageState extends State<DogProfilePage> {
       diseases: diseasesController.text.trim(),
       photoUrl: finalImageUrl,
       pedigree: finalPedigreeUrl,
-      weight: newWeightValue, // 🟢 ส่งน้ำหนักไปอัปเดตที่ไฟล์หลัก
+      weight: newWeightValue, 
     );
 
     if (success && mounted) {
-      // 🟢 ตรวจสอบว่าน้ำหนักเปลี่ยนไปจากเดิมไหม ถ้าเปลี่ยน ให้บันทึกประวัติด้วย!
       final oldWeight = provider.currentDogData?['weight'];
       if (newWeightValue != null && newWeightValue != oldWeight) {
         await _db.recordWeightHistory(provider.currentDogId!, newWeightValue);
@@ -305,7 +331,7 @@ class _DogProfilePageState extends State<DogProfilePage> {
         'photoUrl': finalImageUrl,
         'pedigree': finalPedigreeUrl,
         if (newWeightValue != null)
-          'weight': newWeightValue, // 🟢 อัปเดต State ล่าสุด
+          'weight': newWeightValue, 
       };
 
       provider.selectDog(provider.currentDogId!, updatedData);
@@ -328,7 +354,6 @@ class _DogProfilePageState extends State<DogProfilePage> {
     });
   }
 
-  // 🟢 ฟังก์ชันสำหรับแสดงหน้าต่าง Popup (Bottom Sheet) ดูประวัติน้ำหนัก
   void _showWeightHistoryBottomSheet(String dogId) {
     showModalBottomSheet(
       context: context,
@@ -455,7 +480,6 @@ class _DogProfilePageState extends State<DogProfilePage> {
                         return const Center(child: Text("กำลังโหลดข้อมูล..."));
                       }
 
-                      // 🟢 ดึงน้ำหนักปัจจุบันมาเพื่อแสดงผล
                       final currentWeight = provider.currentDogData?['weight'];
 
                       return SingleChildScrollView(
@@ -534,7 +558,6 @@ class _DogProfilePageState extends State<DogProfilePage> {
                                         value: _getAge(),
                                       ),
 
-                                      // 🟢 ส่วนแสดงน้ำหนัก และปุ่มกดดูประวัติ
                                       Column(
                                         children: [
                                           Padding(
@@ -651,9 +674,7 @@ class _DogProfilePageState extends State<DogProfilePage> {
                                           onTap: _pickBirthDate,
                                           child: AbsorbPointer(
                                             child: TextField(
-                                              controller: TextEditingController(
-                                                text: _getFormattedBirthDate(),
-                                              ),
+                                              controller: birthDateController, 
                                               decoration: const InputDecoration(
                                                 suffixIcon: Icon(
                                                   Icons.calendar_today,
@@ -663,13 +684,26 @@ class _DogProfilePageState extends State<DogProfilePage> {
                                           ),
                                         ),
                                       ),
+                                      
+                                      // 🟢 แก้ไขช่องอายุให้ใช้ Controller แบบอ่านอย่างเดียว
                                       EditDogInfoRow(
                                         label: "อายุ:",
-                                        child: Text(_getAge()),
+                                        child: TextField(
+                                          controller: ageController,
+                                          readOnly: true, 
+                                          decoration: InputDecoration(
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: BorderSide.none,
+                                            ),
+                                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                                            hintText: 'ระบบคำนวณให้อัตโนมัติ',
+                                            fillColor: Colors.grey.shade100,
+                                            filled: true,
+                                          ),
+                                        ),
                                       ),
 
-                                      // 🟢 เพิ่มช่องกรอกน้ำหนักตอน Edit
-                                      // 🟢 เพิ่มช่องกรอกน้ำหนักตอน Edit
                                       EditDogInfoRow(
                                         label: "น้ำหนัก (กก.):",
                                         child: TextField(
@@ -678,7 +712,6 @@ class _DogProfilePageState extends State<DogProfilePage> {
                                               const TextInputType.numberWithOptions(
                                                 decimal: true,
                                               ),
-                                          // 👇 เพิ่ม inputFormatters บล็อกไม่ให้พิมพ์ตัวอักษร
                                           inputFormatters: [
                                             FilteringTextInputFormatter.allow(
                                               RegExp(r'^\d*\.?\d*'),
@@ -766,14 +799,6 @@ class _DogProfilePageState extends State<DogProfilePage> {
                 ),
               ],
             ),
-
-            if (isLoading)
-              Container(
-                color: Colors.black.withOpacity(0.5),
-                child: const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
-                ),
-              ),
           ],
         ),
       ),
@@ -810,7 +835,7 @@ class ProfileHeader extends StatelessWidget {
     } else if (dogImage.isNotEmpty && dogImage.startsWith('http')) {
       imageProvider = NetworkImage(dogImage);
     } else {
-      imageProvider = const AssetImage('assets/images/dog.png');
+      imageProvider = const AssetImage('assets/dog.png');
     }
 
     return Center(
