@@ -362,7 +362,7 @@ class _DogProfilePageState extends State<DogProfilePage> {
       ),
       builder: (context) {
         return Container(
-          padding: const EdgeInsets.all(20),
+         
           height: MediaQuery.of(context).size.height * 0.5,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
