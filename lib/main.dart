@@ -7,6 +7,7 @@ import 'package:regdogapp/screen/login_screen.dart';
 import 'package:regdogapp/screen/navbar_screen/calendar_screen.dart';
 import 'package:regdogapp/providers/current_dog_provider.dart';
 import 'package:regdogapp/screen/navbar_screen/places_screen.dart';
+import 'package:regdogapp/screen/register_screen/profile_user_screen.dart';
 import 'package:regdogapp/service/notification_service.dart'; 
 import 'firebase_options.dart';
 
@@ -85,7 +86,7 @@ class _RegDogAppState extends State<RegDogApp> {
       supportedLocales: const [ 
         Locale('th', 'TH'),
       ],
-      home: const  PlacePage(),
+      home: const LoginScreen(),
     );
   }
 }

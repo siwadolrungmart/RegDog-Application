@@ -6,6 +6,8 @@ import 'package:cloud_firestore/cloud_firestore.dart'; // เพิ่ม Import
 // ต้อง import ไฟล์หน้าสร้างบัญชีเพื่อให้เรียกใช้ class ได้
 import 'package:regdogapp/screen/create_account_screen.dart';
 import 'package:regdogapp/screen/dog_list.dart';
+import 'package:regdogapp/screen/register_screen/registerdogname.dart';
+import 'package:regdogapp/screen/register_screen/registergender.dart';
 // นำเข้าไฟล์หน้าเลือกสถานะสุนัข (ตรวจสอบ path ให้ตรงกับโปรเจกต์ของคุณ)
 import 'package:regdogapp/screen/register_screen/registerhavedog.dart';
 
@@ -396,7 +398,7 @@ class _LoginScreenState extends State<LoginScreen> {
           // ถ้าไม่มีข้อมูลสุนัขเลย -> ไปหน้าลงทะเบียนสุนัข
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const Registerhavedog()),
+            MaterialPageRoute(builder: (context) => const Registerdogname()),
           );
         } else {
           // ถ้ามีสุนัขอย่างน้อย 1 ตัว -> ไปหน้า DogListPage

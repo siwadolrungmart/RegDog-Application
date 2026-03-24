@@ -42,7 +42,7 @@ class DogProfilePage extends StatefulWidget {
 }
 
 class _DogProfilePageState extends State<DogProfilePage> {
-  int _currentIndex = 2;
+  int _currentIndex = 4;
   final DatabaseService _db = DatabaseService();
   bool isEditing = false;
   bool isLoading = false;

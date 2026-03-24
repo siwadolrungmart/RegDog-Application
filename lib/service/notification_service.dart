@@ -31,6 +31,9 @@ class NotificationService {
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
+      defaultPresentAlert: true,
+      defaultPresentSound: true,
+      defaultPresentBadge: true,
     );
 
     const InitializationSettings initSettings = InitializationSettings(android: androidSettings, iOS: iosSettings);

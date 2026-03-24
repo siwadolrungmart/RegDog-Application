@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:regdogapp/component/upperbar.dart';
 import 'package:regdogapp/component/bar.dart';
 import 'package:regdogapp/screen/dog_list.dart';
+import 'package:regdogapp/screen/register_screen/profile_user_screen.dart';
 import 'package:regdogapp/service/dogdatabase_service.dart';
 import 'package:regdogapp/providers/current_dog_provider.dart';
 
@@ -59,17 +60,23 @@ class _HomepageState extends State<Homepage> {
       body: SafeArea(
         child: Column(
           children: [
-            HomeTopBar(
-              showProfile: true,
-              onMenuTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const DogListPage()),
-                );
-              },
-              onNotificationTap: () => debugPrint("Notification tapped"),
-              onProfileTap: () => debugPrint("Profile tapped"),
-            ),
+        HomeTopBar(
+      showProfile: true,
+      onMenuTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const DogListPage()),
+        );
+      },
+      onNotificationTap: () => debugPrint("Notification tapped"),
+      onProfileTap: () {
+        // 🟢 เปลี่ยนเส้นทางไปหน้า User Profile
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const UserProfileScreen()),
+        );
+      },
+    ),
             Expanded(
               child: Consumer<CurrentDogProvider>(
                 builder: (context, provider, child) {
