@@ -119,7 +119,7 @@ class DatabaseService {
     }
   }
 
-  String generateQrWebLink(String dogId) {
-    return "https://senior-project-regdog.web.app/scan?dogId=$dogId";
+String generateQrWebLink(String dogId) {
+    return "https://senior-project-regdog.web.app/?dogId=$dogId";
   }
 }

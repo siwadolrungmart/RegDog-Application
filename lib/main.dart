@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // 🟢 เพิ่มบรรทัดนี้ เพื่อให้รู้จักคำสั่ง kIsWeb
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -12,12 +13,72 @@ import 'package:regdogapp/screen/qr_scan_result_page.dart';
 import 'package:regdogapp/screen/register_screen/profile_user_screen.dart';
 import 'package:regdogapp/service/notification_service.dart'; 
 import 'firebase_options.dart';
-@override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      // 🔴 ส่วนสำคัญ: เชื่อมต่อ Key เพื่อใช้เปลี่ยนหน้าจาก Notification
-      navigatorKey: NotificationService.navigatorKey, 
 
+// ==========================================
+// 🚀 1. ฟังก์ชัน main() 
+// ==========================================
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CurrentDogProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
+}
+
+// ==========================================
+// 🎨 2. คลาสหลักของแอป
+// ==========================================
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    
+    // ==========================================
+    // 🌐 โหมด WEB: สำหรับคนสแกน QR Code (จะโชว์แค่นี้)
+    // ==========================================
+    if (kIsWeb) {
+      // ดึงรหัส dogId จากลิงก์เว็บที่สแกนมา
+      final dogId = Uri.base.queryParameters['dogId'];
+
+      return MaterialApp(
+        title: 'RegDog Pet Info',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          useMaterial3: true,
+          textTheme: GoogleFonts.interTextTheme(
+            Theme.of(context).textTheme,
+          ),
+        ),
+        // ถ้าลิงก์มี dogId ให้เปิดหน้าโชว์ข้อมูล ถ้าไม่มีให้ขึ้นว่าไม่พบข้อมูล
+        home: (dogId != null && dogId.isNotEmpty)
+            ? QrScanResultPage(dogId: dogId)
+            : Scaffold(
+                backgroundColor: const Color(0xFFF6F8F9),
+                body: Center(
+                  child: Text(
+                    'ไม่พบข้อมูลสุนัข หรือลิงก์ไม่ถูกต้อง',
+                    style: GoogleFonts.mitr(fontSize: 18, color: Colors.grey),
+                  ),
+                ),
+              ),
+      );
+    }
+
+    // ==========================================
+    // 📱 โหมด APP: สำหรับแอป iOS ตัวเต็มของเรา
+    // ==========================================
+    return MaterialApp(
+      navigatorKey: NotificationService.navigatorKey, 
       title: 'RegDog',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -25,12 +86,10 @@ import 'firebase_options.dart';
         scaffoldBackgroundColor: Colors.transparent,
         textTheme: GoogleFonts.interTextTheme(
           Theme.of(context).textTheme,
-        ),
+         ),
       ),
       
-      // ==========================================
-      // 🟢 เพิ่มส่วนนี้: เพื่อดักจับลิงก์ /scan จากคิวอาร์โค้ด
-      // ==========================================
+      // ดักจับลิงก์ /scan เผื่อกรณีแสกนจากในแอปตัวเอง
       onGenerateRoute: (settings) {
         if (settings.name != null && settings.name!.startsWith('/scan')) {
           final uri = Uri.parse(settings.name!);
@@ -42,9 +101,8 @@ import 'firebase_options.dart';
             );
           }
         }
-        return null; // ถ้าไม่ใช่ลิงก์ /scan ก็ปล่อยให้แอปทำงานปกติต่อไป
+        return null;
       },
-      // ==========================================
 
       builder: (context, child) {
         return Container(
@@ -55,7 +113,6 @@ import 'firebase_options.dart';
             ),
           ),
           child: Padding(
-            // ปรับ padding ให้เหมาะสม (ถ้า child เป็น null จะไม่ทำงาน)
             padding: const EdgeInsets.only(top: 0, left: 16, right: 16),
             child: child,
           ),
@@ -69,6 +126,9 @@ import 'firebase_options.dart';
       supportedLocales: const [ 
         Locale('th', 'TH'),
       ],
-      home: const Homepage(),
+      
+      // เข้าแอปมาเจอหน้า Login
+      home: const LoginScreen(), 
     );
   }
+}
