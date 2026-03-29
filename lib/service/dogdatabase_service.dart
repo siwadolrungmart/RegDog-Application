@@ -3,97 +3,48 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart'; 
 
 class DatabaseService {
-  final CollectionReference _dogCollection =
-      FirebaseFirestore.instance.collection('dogs');
+  final CollectionReference _dogCollection = FirebaseFirestore.instance.collection('dogs');
 
-  // ==========================================
-  // 1. CREATE: ฟังก์ชันสำหรับเพิ่มข้อมูลสุนัขตัวใหม่
-  // ==========================================
+  // 1. CREATE: เพิ่มข้อมูลสุนัขตัวใหม่
   Future<bool> addDog({
-    required String name,
-    required String breed,
-    required DateTime birthDate,
-    required String gender,
-    double weight = 0.0,
-    String photoUrl = '',
-    String? qrCodeId, 
-    String microchip = '',
-    String pedigree = '',
-    String diseases = '',
+    required String name, required String breed, required DateTime birthDate,
+    required String gender, double weight = 0.0, String photoUrl = '',
+    String? qrCodeId, String microchip = '', String pedigree = '', String diseases = '',
   }) async {
     try {
-      // ดึงข้อมูล User ที่กำลังล็อกอินอยู่ ณ ปัจจุบัน
       final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return false;
       
-      if (user == null) {
-        debugPrint('❌ ไม่พบผู้ใช้งานในระบบ (อาจจะล็อกเอาท์ไปแล้ว)');
-        return false;
-      }
-      
-      final String currentUserId = user.uid; 
-
-      // ถ้าไม่ได้ส่งรหัส QR มา ให้สร้างอัตโนมัติจากเวลา
       final String generateQrCode = qrCodeId ?? 'QR_${DateTime.now().millisecondsSinceEpoch}';
-      
-      // บันทึกลง Firestore
       final newDogRef = await _dogCollection.add({
-        'ownerId': currentUserId, 
-        'name': name,
-        'breed': breed,
-        'birthDate': Timestamp.fromDate(birthDate),
-        'gender': gender,
-        'weight': weight,
-        'photoUrl': photoUrl,
-        'qrCodeId': generateQrCode,
-        'microchip': microchip,
-        'pedigree': pedigree,
-        'diseases': diseases,
+        'ownerId': user.uid, 'name': name, 'breed': breed,
+        'birthDate': Timestamp.fromDate(birthDate), 'gender': gender,
+        'weight': weight, 'photoUrl': photoUrl, 'qrCodeId': generateQrCode,
+        'microchip': microchip, 'pedigree': pedigree, 'diseases': diseases,
         'createdAt': FieldValue.serverTimestamp(),
       });
-      
-      debugPrint('✅ บันทึกข้อมูลน้องหมาสำเร็จ: $name (ของ User ID: $currentUserId)');
 
-      // 🟢 ถ้ามีการใส่น้ำหนักเริ่มต้นมาด้วย ให้บันทึกเป็นประวัติครั้งแรกเลย
-      if (weight > 0) {
-        await recordWeightHistory(newDogRef.id, weight);
-      }
-
+      if (weight > 0) await recordWeightHistory(newDogRef.id, weight);
       return true;
     } catch (e) {
-      debugPrint('❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล: $e');
+      debugPrint('❌ Error adding dog: $e');
       return false;
     }
   }
 
-  // ==========================================
-  // 2. READ: ฟังก์ชันดึงข้อมูลมาแสดงผล
-  // ==========================================
+  // 2. READ: ดึงข้อมูล
   Stream<QuerySnapshot> getDogsByOwner(String ownerId) {
-    return _dogCollection
-        .where('ownerId', isEqualTo: ownerId)
-        .orderBy('createdAt', descending: true)
-        .snapshots();
+    return _dogCollection.where('ownerId', isEqualTo: ownerId).orderBy('createdAt', descending: true).snapshots();
   }
-
   Future<DocumentSnapshot> getDogById(String docId) async {
     return await _dogCollection.doc(docId).get();
   }
 
-  // ==========================================
-  // 3. UPDATE: ฟังก์ชันแก้ไขข้อมูลสุนัข
-  // ==========================================
+  // 3. UPDATE: แก้ไขข้อมูลสุนัข
   Future<bool> updateDog({
-    required String docId,
-    String? name,
-    String? breed,
-    DateTime? birthDate,
-    String? gender,
-    double? weight,
-    String? photoUrl,
-    String? qrCodeId,
-    String? microchip,
-    String? pedigree,
-    String? diseases,
+    required String docId, String? name, String? breed, DateTime? birthDate,
+    String? gender, double? weight, String? photoUrl, String? qrCodeId,
+    String? microchip, String? pedigree, String? diseases,
   }) async {
     try {
       Map<String, dynamic> updateData = {};
@@ -107,57 +58,68 @@ class DatabaseService {
       if (microchip != null) updateData['microchip'] = microchip;
       if (pedigree != null) updateData['pedigree'] = pedigree;
       if (diseases != null) updateData['diseases'] = diseases;
-      
       updateData['updatedAt'] = FieldValue.serverTimestamp();
       
       await _dogCollection.doc(docId).update(updateData);
-      debugPrint('✅ แก้ไขข้อมูลน้องหมาสำเร็จ (ID: $docId)');
       return true;
     } catch (e) {
-      debugPrint('❌ เกิดข้อผิดพลาดในการแก้ไขข้อมูล: $e');
       return false;
     }
   }
 
-  // ==========================================
-  // 4. DELETE: ฟังก์ชันลบข้อมูลสุนัข
-  // ==========================================
+  // 4. DELETE: ลบข้อมูลสุนัข
   Future<bool> deleteDog(String docId) async {
     try {
       await _dogCollection.doc(docId).delete();
-      debugPrint('✅ ลบข้อมูลน้องหมาสำเร็จ (ID: $docId)');
       return true;
     } catch (e) {
-      debugPrint('❌ เกิดข้อผิดพลาดในการลบข้อมูล: $e');
       return false;
     }
   }
 
-  // ==========================================
-  // 5. WEIGHT HISTORY: ระบบประวัติน้ำหนัก (Subcollection)
-  // ==========================================
-  
-  // 5.1 บันทึกประวัติน้ำหนัก
+  // 5. WEIGHT HISTORY: ประวัติน้ำหนัก
   Future<bool> recordWeightHistory(String dogId, double weight) async {
     try {
       await _dogCollection.doc(dogId).collection('weight_history').add({
-        'weight': weight,
-        'recordedAt': FieldValue.serverTimestamp(),
+        'weight': weight, 'recordedAt': FieldValue.serverTimestamp(),
       });
-      debugPrint('✅ บันทึกประวัติน้ำหนักสำเร็จ (น้ำหนัก: $weight กก.)');
       return true;
     } catch (e) {
-      debugPrint('❌ เกิดข้อผิดพลาดในการบันทึกประวัติน้ำหนัก: $e');
+      return false;
+    }
+  }
+  Stream<QuerySnapshot> getWeightHistory(String dogId) {
+    return _dogCollection.doc(dogId).collection('weight_history').orderBy('recordedAt', descending: true).snapshots();
+  }
+
+  // ==========================================
+  // 🟢 6. QR CODE TRACKING
+  // ==========================================
+  Future<bool> saveQrTrackingInfo({
+    required String dogId, required String ownerContactName,
+    required String phone, required String address,
+    required String note, required String dogStatus,
+  }) async {
+    try {
+      await _dogCollection.doc(dogId).set({
+        'qrTrackingData': {
+          'contactName': ownerContactName,
+          'phone': phone,
+          'address': address,
+          'note': note,
+          'status': dogStatus,
+          'lastUpdatedAt': FieldValue.serverTimestamp(),
+        },
+        'currentStatus': dogStatus, 
+      }, SetOptions(merge: true));
+      return true;
+    } catch (e) {
+      debugPrint('❌ Error saving QR data: $e');
       return false;
     }
   }
 
-  // 5.2 ดึงประวัติน้ำหนักมาแสดงผล (เรียงจากล่าสุดไปเก่าสุด)
-  Stream<QuerySnapshot> getWeightHistory(String dogId) {
-    return _dogCollection
-        .doc(dogId)
-        .collection('weight_history')
-        .orderBy('recordedAt', descending: true)
-        .snapshots();
+  String generateQrWebLink(String dogId) {
+    return "https://senior-project-regdog.web.app/scan?dogId=$dogId";
   }
 }

@@ -6,49 +6,13 @@ import 'package:provider/provider.dart';
 import 'package:regdogapp/screen/login_screen.dart';
 import 'package:regdogapp/screen/navbar_screen/calendar_screen.dart';
 import 'package:regdogapp/providers/current_dog_provider.dart';
+import 'package:regdogapp/screen/navbar_screen/home_screen.dart';
 import 'package:regdogapp/screen/navbar_screen/places_screen.dart';
+import 'package:regdogapp/screen/qr_scan_result_page.dart';
 import 'package:regdogapp/screen/register_screen/profile_user_screen.dart';
 import 'package:regdogapp/service/notification_service.dart'; 
 import 'firebase_options.dart';
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  await NotificationService.init();
-
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider<CurrentDogProvider>(
-          create: (_) => CurrentDogProvider(),
-        ),
-      ],
-      child: const RegDogApp(),
-    ),
-  );
-}
-
-class RegDogApp extends StatefulWidget {
-  const RegDogApp({super.key});
-
-  @override
-  State<RegDogApp> createState() => _RegDogAppState();
-}
-
-class _RegDogAppState extends State<RegDogApp> {
-  
-  @override
-  void initState() {
-    super.initState();
-    // 🟢 ขอ Permission แจ้งเตือนเมื่อเปิดแอป
-    NotificationService.requestPermission();
-  }
-
-  @override
+@override
   Widget build(BuildContext context) {
     return MaterialApp(
       // 🔴 ส่วนสำคัญ: เชื่อมต่อ Key เพื่อใช้เปลี่ยนหน้าจาก Notification
@@ -63,6 +27,25 @@ class _RegDogAppState extends State<RegDogApp> {
           Theme.of(context).textTheme,
         ),
       ),
+      
+      // ==========================================
+      // 🟢 เพิ่มส่วนนี้: เพื่อดักจับลิงก์ /scan จากคิวอาร์โค้ด
+      // ==========================================
+      onGenerateRoute: (settings) {
+        if (settings.name != null && settings.name!.startsWith('/scan')) {
+          final uri = Uri.parse(settings.name!);
+          final dogId = uri.queryParameters['dogId'];
+
+          if (dogId != null && dogId.isNotEmpty) {
+            return MaterialPageRoute(
+              builder: (context) => QrScanResultPage(dogId: dogId),
+            );
+          }
+        }
+        return null; // ถ้าไม่ใช่ลิงก์ /scan ก็ปล่อยให้แอปทำงานปกติต่อไป
+      },
+      // ==========================================
+
       builder: (context, child) {
         return Container(
           decoration: const BoxDecoration(
@@ -86,7 +69,6 @@ class _RegDogAppState extends State<RegDogApp> {
       supportedLocales: const [ 
         Locale('th', 'TH'),
       ],
-      home: const LoginScreen(),
+      home: const Homepage(),
     );
   }
-}

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // 🟢 เพิ่ม Import Provider
-import 'package:regdogapp/providers/current_dog_provider.dart'; // 🟢 เพิ่ม Import Provider ของน้องหมา
+import 'package:provider/provider.dart';
+import 'package:regdogapp/providers/current_dog_provider.dart';
 
 // Import หน้าต่างๆ ของคุณ
-
 import 'package:regdogapp/screen/navbar_screen/calendar_screen.dart';
 import 'package:regdogapp/screen/navbar_screen/dogprofile_screen.dart';
 import 'package:regdogapp/screen/navbar_screen/home_screen.dart';
@@ -20,21 +19,18 @@ class CustomBottomNavBar extends StatelessWidget {
     required this.onItemTapped,
   });
 
-  // 🟢 ฟังก์ชันสำหรับจัดการการเปลี่ยนหน้า
   void _navigate(BuildContext context, int index) {
-    if (index == selectedIndex) return; // ถ้ากดหน้าเดิมที่อยู่แล้ว ไม่ต้องทำอะไร
+    if (index == selectedIndex) return;
 
-    // 🟢 ดึง dogId ของน้องหมาที่กำลังเลือกอยู่ ณ ปัจจุบัน ผ่าน Provider
     final provider = Provider.of<CurrentDogProvider>(context, listen: false);
     final String currentDogId = provider.currentDogId ?? ''; 
 
     Widget page;
     switch (index) {
       case 0:
-        page = const QRPage(); // หากในอนาคตหน้านี้ต้องการ dogId ก็เปลี่ยนเป็น QRPage(dogId: currentDogId) ได้ครับ
+        page = const QrCodePage(); 
         break;
       case 1:
-        // 🟢 เอา const ออก และส่ง dogId ไปให้หน้าปฏิทิน เพื่อแก้ Error ตัวแดง
         page = CalendarPage(); 
         break;
       case 2:
@@ -46,11 +42,11 @@ class CustomBottomNavBar extends StatelessWidget {
       case 4:
         page = const DogProfilePage(); 
         break;
+      // 🟢 เพิ่ม default แบบให้ return ออกไปเลย (ไม่ต้องทำอะไรถ้าเป็นค่าที่ไม่ได้กำหนด)
       default:
-        page = const Homepage();
+        return; 
     }
 
-    // ใช้ pushReplacement เพื่อไม่ให้หน้าซ้อนกัน
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
@@ -100,7 +96,7 @@ class CustomBottomNavBar extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         onItemTapped(index); 
-        _navigate(context, index); // 🟢 เรียกใช้ฟังก์ชันเปลี่ยนหน้า
+        _navigate(context, index); 
       },
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(

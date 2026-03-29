@@ -50,6 +50,15 @@ class CurrentDogProvider extends ChangeNotifier {
   String get dogDiseases => _currentDogData?['diseases'] ?? '';
   String? get dogQrCodeId => _currentDogData?['qrCodeId'] as String?;
 
+  // ==================== QR TRACKING DATA ====================
+  Map<String, dynamic>? get qrTrackingData => _currentDogData?['qrTrackingData'] as Map<String, dynamic>?;
+
+  String get ownerContactName => qrTrackingData?['contactName'] ?? '';
+  String get ownerPhone => qrTrackingData?['phone'] ?? '';
+  String get ownerAddress => qrTrackingData?['address'] ?? '';
+  String get ownerNote => qrTrackingData?['note'] ?? '';
+  String get currentStatus => _currentDogData?['currentStatus'] ?? 'ไม่ระบุ';
+
   // ==================== METHODS ====================
 
   // ฟังก์ชันเลือกสุนัขแบบแนบข้อมูลมาเลย (แบบเก่า)

@@ -18,7 +18,7 @@ class UserProfileScreen extends StatefulWidget {
 }
 
 class _UserProfileScreenState extends State<UserProfileScreen> {
-  int _currentIndex = 3; // กำหนด Index ให้ตรงกับเมนู Profile ของคุณใน BottomNavBar
+  int _currentIndex = -1; // กำหนด Index ให้ตรงกับเมนู Profile ของคุณใน BottomNavBar
   
   bool _isEditing = false;
   bool _isLoading = true;
