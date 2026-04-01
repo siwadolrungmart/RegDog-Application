@@ -1,16 +1,14 @@
 import 'dart:ui' as ui;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; 
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart'; // 🟢 เพิ่ม Firebase Storage
-
-// 🔴 TODO: แก้ไข Path ให้ตรงกับ Component ของคุณในโปรเจกต์
-// import 'package:regdogapp/component/upperbar.dart';
-// import 'package:regdogapp/component/bar.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:regdogapp/component/bar.dart'; 
 import 'package:regdogapp/service/dogdatabase_service.dart';
 import 'package:regdogapp/providers/current_dog_provider.dart';
 
@@ -24,7 +22,9 @@ class QrCodePage extends StatefulWidget {
 class _QrCodePageState extends State<QrCodePage> {
   final DatabaseService _dbService = DatabaseService();
   final _formKey = GlobalKey<FormState>();
-
+  
+  int _currentIndex = 0;
+  
   bool _hasData = false; 
   bool _isLoading = false;
 
@@ -39,7 +39,6 @@ class _QrCodePageState extends State<QrCodePage> {
   @override
   void initState() {
     super.initState();
-    // 🟢 ตรวจสอบข้อมูลตอนเปิดหน้า ถ้าเคยสร้างคิวอาร์โค้ดแล้ว ให้โชว์คิวอาร์โค้ดเลย
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadExistingData();
     });
@@ -48,7 +47,7 @@ class _QrCodePageState extends State<QrCodePage> {
   void _loadExistingData() {
     final provider = Provider.of<CurrentDogProvider>(context, listen: false);
     
-    // เช็คว่ามีข้อมูล Tracking เดิมอยู่แล้วหรือไม่
+    // ตรงนี้ยังใช้ Provider โหลดข้อมูลแบบฟอร์มค้างไว้ได้ (ถ้ามี)
     if (provider.qrTrackingData != null && provider.qrTrackingData!.isNotEmpty) {
       setState(() {
         _ownerNameController.text = provider.ownerContactName;
@@ -56,13 +55,12 @@ class _QrCodePageState extends State<QrCodePage> {
         _addressController.text = provider.ownerAddress;
         _noteController.text = provider.ownerNote;
         
-        // ป้องกัน Error กรณีสถานะใน Database ไม่ตรงกับ Dropdown
         String status = provider.currentStatus;
         if (!['ไม่ระบุ', 'ปกติ', 'หาย'].contains(status)) status = 'ไม่ระบุ';
         _dogStatus = status;
         
         _qrDataLink = _dbService.generateQrWebLink(provider.currentDogId ?? '');
-        _hasData = true; // ให้แสดงหน้าคิวอาร์โค้ดทันที
+        _hasData = true; 
       });
     }
   }
@@ -102,7 +100,6 @@ class _QrCodePageState extends State<QrCodePage> {
     return ageParts.isEmpty ? 'เกิดวันนี้' : ageParts.join(' ');
   }
 
-  // 🟢 ฟังก์ชันบันทึกข้อมูลและอัปโหลดรูปคิวอาร์โค้ดลง Storage
   Future<void> _generateQrCode() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -119,23 +116,16 @@ class _QrCodePageState extends State<QrCodePage> {
     String link = _dbService.generateQrWebLink(dogId);
     String? uploadedQrUrl;
 
-    // ==========================================
-    // 1. แปลง QR Code เป็นรูปภาพและอัปโหลดไป Firebase Storage
-    // ==========================================
     try {
       final validationResult = QrValidator.validate(data: link, version: QrVersions.auto, errorCorrectionLevel: QrErrorCorrectLevel.H);
       if (validationResult.status == QrValidationStatus.valid) {
-        // วาดภาพคิวอาร์โค้ด
         final painter = QrPainter.withQr(qr: validationResult.qrCode!, color: const Color(0xFF000000), emptyColor: const Color(0xFFFFFFFF), gapless: true);
-        // แปลงเป็น ByteData (ขนาด 1024x1024 pixel)
         final picData = await painter.toImageData(1024, format: ui.ImageByteFormat.png);
         
         if (picData != null) {
           final Uint8List bytes = picData.buffer.asUint8List();
-          // อัปโหลดขึ้น Firebase Storage (ตั้งชื่อไฟล์เป็นรหัสสุนัข)
           final ref = FirebaseStorage.instance.ref().child('qr_codes/dog_$dogId.png');
           await ref.putData(bytes, SettableMetadata(contentType: 'image/png'));
-          // รับ URL รูปภาพกลับมา
           uploadedQrUrl = await ref.getDownloadURL();
         }
       }
@@ -143,9 +133,6 @@ class _QrCodePageState extends State<QrCodePage> {
       debugPrint("❌ Error uploading QR Image: $e");
     }
 
-    // ==========================================
-    // 2. บันทึกข้อมูลเจ้าของลง Database
-    // ==========================================
     bool success = await _dbService.saveQrTrackingInfo(
       dogId: dogId,
       ownerContactName: _ownerNameController.text.trim(),
@@ -155,23 +142,20 @@ class _QrCodePageState extends State<QrCodePage> {
       dogStatus: _dogStatus,
     );
 
-    // ==========================================
-    // 3. บันทึก URL รูปลง Firestore ด้วย (ถ้าอัปโหลดสำเร็จ)
-    // ==========================================
     if (uploadedQrUrl != null) {
       await FirebaseFirestore.instance.collection('dogs').doc(dogId).set({
         'qrImageUrl': uploadedQrUrl,
       }, SetOptions(merge: true));
     }
 
-    // สั่ง Provider ดึงข้อมูลล่าสุด เพื่อให้แอปจำค่าไว้
+    // สั่ง Provider โหลดข้อมูลใหม่หลังจากเราสร้าง QR ไปแล้ว
     await provider.selectDogById(dogId);
 
     setState(() {
       _isLoading = false;
       if (success) {
         _qrDataLink = link;
-        _hasData = true; // เปลี่ยนไปหน้าแสดง QR
+        _hasData = true; 
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('บันทึกและสร้างคิวอาร์โค้ดสำเร็จ!'), backgroundColor: Colors.green));
       } else {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('เกิดข้อผิดพลาด'), backgroundColor: Colors.red));
@@ -181,38 +165,56 @@ class _QrCodePageState extends State<QrCodePage> {
 
   @override
   Widget build(BuildContext context) {
+    // 🟢 ดึง dogId มาจาก Provider ก่อน เพื่อเอาไปค้นหาใน Database
+    final provider = Provider.of<CurrentDogProvider>(context);
+    final currentDogId = provider.currentDogId;
+
     return Scaffold(
       backgroundColor: Colors.transparent, 
       body: SafeArea(
         child: Column(
           children: [
             Expanded(
-              child: _isLoading 
+              child: _isLoading || currentDogId == null
                 ? const Center(child: CircularProgressIndicator())
-                : Consumer<CurrentDogProvider>(
-                    builder: (context, provider, child) {
-                      if (provider.currentDogId == null || provider.currentDogData == null) {
-                        return Center(child: Text("กำลังโหลดข้อมูล...", style: GoogleFonts.inter()));
+                // 🟢 ใช้ FutureBuilder เพื่อดึงข้อมูลสดๆ จาก Firebase โดยตรงด้วย dogId
+                : FutureBuilder<DocumentSnapshot>(
+                    future: _dbService.getDogById(currentDogId),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Center(child: Text("กำลังโหลดข้อมูลจากฐานข้อมูล...", style: GoogleFonts.inter()));
+                      }
+                      
+                      if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.exists) {
+                        return Center(child: Text("ไม่พบข้อมูลสุนัข", style: GoogleFonts.inter()));
                       }
 
+                      // 🟢 แปลงข้อมูลที่ได้จาก Firebase มาเป็น Map
+                      Map<String, dynamic> rawData = snapshot.data!.data() as Map<String, dynamic>;
+
                       DateTime? birthDate;
-                      final rawData = provider.currentDogData ?? {};
                       if (rawData['birthDate'] is Timestamp) {
                         birthDate = (rawData['birthDate'] as Timestamp).toDate();
                       }
                       
-                      // 🟢 ดึง URL ของคิวอาร์โค้ดที่เคยอัปโหลดไว้
                       final String? qrImageUrl = rawData['qrImageUrl'];
+                      
+                      String weightText = 'ไม่ระบุ';
+                      if (rawData['weight'] != null) {
+                         weightText = '${rawData['weight']} กก.';
+                      }
 
+                      // 🟢 จัดเตรียมข้อมูลสำหรับส่งเข้าหน้า UI
                       final Map<String, String> dogData = {
-                        'name': provider.dogName,
-                        'gender': provider.dogGender,
-                        'breed': provider.dogBreed,
+                        'name': rawData['name'] ?? 'ไม่ระบุ',
+                        'gender': rawData['gender'] ?? 'ไม่ระบุ',
+                        'breed': rawData['breed'] ?? 'ไม่ระบุ',
                         'dob': birthDate != null ? DateFormat('d MMMM yyyy', 'th').format(birthDate) : 'ไม่ระบุ',
                         'age': _calculateAge(birthDate),
-                        'microchip': provider.dogMicrochip.isEmpty ? 'ไม่มี' : provider.dogMicrochip,
-                        'disease': provider.dogDiseases.isEmpty ? 'ไม่มี' : provider.dogDiseases,
-                        'imageUrl': provider.dogImage.isEmpty ? 'https://via.placeholder.com/150' : provider.dogImage,
+                        'weight': weightText,
+                        'microchip': (rawData['microchip'] != null && rawData['microchip'].toString().isNotEmpty) ? rawData['microchip'] : 'ไม่มี',
+                        'disease': (rawData['diseases'] != null && rawData['diseases'].toString().isNotEmpty) ? rawData['diseases'] : 'ไม่มี',
+                        'imageUrl': (rawData['photoUrl'] != null && rawData['photoUrl'].toString().isNotEmpty) ? rawData['photoUrl'] : 'https://via.placeholder.com/150',
                       };
 
                       return SingleChildScrollView(
@@ -220,8 +222,8 @@ class _QrCodePageState extends State<QrCodePage> {
                         child: _hasData 
                             ? QrDisplayState(
                                 qrLink: _qrDataLink,
-                                qrImageUrl: qrImageUrl, // ส่ง URL รูปลงไปโชว์
-                                onEdit: () => setState(() => _hasData = false), // พอกดแก้ไข จะกลับไปหน้า Form (ค่าต่างๆ ยังค้างอยู่)
+                                qrImageUrl: qrImageUrl,
+                                onEdit: () => setState(() => _hasData = false), 
                               )
                             : _buildFormState(dogData),
                       );
@@ -231,11 +233,15 @@ class _QrCodePageState extends State<QrCodePage> {
           ],
         ),
       ),
+      bottomNavigationBar: CustomBottomNavBar(
+        selectedIndex: _currentIndex,
+        onItemTapped: (index) => setState(() => _currentIndex = index),
+      ),
     );
   }
 
   // ==========================================
-  // ส่วน UI: ฟอร์มกรอกข้อมูล (เหมือนเดิม)
+  // ส่วน UI: ฟอร์มกรอกข้อมูล 
   // ==========================================
   Widget _buildFormState(Map<String, String> dogData) {
     const Color primaryBlue = Color(0xFFCBE4F0);
@@ -293,7 +299,7 @@ class _QrCodePageState extends State<QrCodePage> {
 // ==========================================
 class QrDisplayState extends StatelessWidget {
   final String qrLink;
-  final String? qrImageUrl; // URL รูปภาพจริงจาก Storage
+  final String? qrImageUrl; 
   final VoidCallback onEdit;
 
   const QrDisplayState({super.key, required this.qrLink, this.qrImageUrl, required this.onEdit});
@@ -307,8 +313,6 @@ class QrDisplayState extends StatelessWidget {
         Text("คิวอาร์โค้ดติดตามสุนัข", style: GoogleFonts.mitr(fontSize: 20, fontWeight: FontWeight.bold)),
         const SizedBox(height: 30),
         
-        // 🟢 โชว์รูปภาพที่มาจาก Firebase Storage (ถ้ามี) 
-        // ถ้าโหลดไม่สำเร็จหรือยังไม่มี ให้โชว์ QR ที่ถูกสร้างแบบ On the fly ไปก่อน
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -378,7 +382,7 @@ class QrDisplayState extends StatelessWidget {
 }
 
 // ==========================================
-// ส่วน UI: Components ย่อย (เหมือนเดิม)
+// ส่วน UI: Components ย่อย 
 // ==========================================
 class DogProfileHeader extends StatelessWidget {
   final String imageUrl, dogName;
@@ -397,8 +401,13 @@ class DogInfoSection extends StatelessWidget {
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
     Text("ข้อมูลส่วนตัวสุนัข", style: GoogleFonts.mitr(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black87)), 
     const SizedBox(height: 16), 
-    _row("ชื่อ:", dogData['name']!), _row("เพศ:", dogData['gender']!), _row("สายพันธุ์:", dogData['breed']!), 
-    _row("วันเกิด:", dogData['dob']!), _row("อายุ:", dogData['age']!), _row("ไมโครชิพ:", dogData['microchip']!), 
+    _row("ชื่อ:", dogData['name']!), 
+    _row("เพศ:", dogData['gender']!), 
+    _row("สายพันธุ์:", dogData['breed']!), 
+    _row("วันเกิด:", dogData['dob']!), 
+    _row("อายุ:", dogData['age']!), 
+    _row("น้ำหนัก:", dogData['weight']!),
+    _row("ไมโครชิพ:", dogData['microchip']!), 
     _row("โรคประจำตัว:", dogData['disease']!, isLast: true)
   ]);
   
@@ -421,7 +430,8 @@ class OwnerInfoSection extends StatelessWidget {
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
     Text("ข้อมูลติดต่อเจ้าของ", style: GoogleFonts.mitr(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black87)), 
     const SizedBox(height: 16),
-    _inputRow("ชื่อ:", ownerNameController, "ระบุชื่อเจ้าของ"), _inputRow("เบอร์โทร:", phoneController, "ระบุเบอร์โทรศัพท์", isPhone: true), 
+    _inputRow("ชื่อ:", ownerNameController, "ระบุชื่อเจ้าของ"), 
+    _inputRow("เบอร์โทร:", phoneController, "ระบุเบอร์โทรศัพท์", isPhone: true), 
     _inputRow("ที่อยู่:", addressController, "ระบุที่อยู่ปัจจุบัน"),
     const SizedBox(height: 10), Align(alignment: Alignment.centerLeft, child: Text("คำอธิบายเพิ่มเติม:", style: GoogleFonts.mitr(color: Colors.black54, fontWeight: FontWeight.w400))), 
     const SizedBox(height: 8),
@@ -442,7 +452,16 @@ class OwnerInfoSection extends StatelessWidget {
   Widget _inputRow(String label, TextEditingController controller, String hint, {bool isPhone=false}) => Column(children: [
     Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
       SizedBox(width: 100, child: Text(label, style: GoogleFonts.mitr(color: Colors.black54, fontWeight: FontWeight.w400))), 
-      Expanded(child: TextFormField(controller: controller, keyboardType: isPhone ? TextInputType.phone : TextInputType.text, decoration: InputDecoration(hintText: hint, hintStyle: GoogleFonts.mitr(color: Colors.grey.shade400, fontSize: 14), border: InputBorder.none, isDense: true, contentPadding: const EdgeInsets.symmetric(vertical: 10)), style: GoogleFonts.mitr(color: Colors.black87), validator: (val) => val!.isEmpty ? 'กรุณากรอกข้อมูล' : null))
+      Expanded(
+        child: TextFormField(
+          controller: controller, 
+          keyboardType: isPhone ? TextInputType.phone : TextInputType.text, 
+          inputFormatters: isPhone ? [FilteringTextInputFormatter.digitsOnly] : [],
+          decoration: InputDecoration(hintText: hint, hintStyle: GoogleFonts.mitr(color: Colors.grey.shade400, fontSize: 14), border: InputBorder.none, isDense: true, contentPadding: const EdgeInsets.symmetric(vertical: 10)), 
+          style: GoogleFonts.mitr(color: Colors.black87), 
+          validator: (val) => val!.isEmpty ? 'กรุณากรอกข้อมูล' : null
+        )
+      )
     ]), const Divider(color: Color(0xFFEEEEEE), height: 1), const SizedBox(height: 8)
   ]);
 }
