@@ -10,6 +10,8 @@ import 'package:flutter/services.dart';
 
 import 'package:regdogapp/component/upperbar.dart';
 import 'package:regdogapp/screen/dog_list.dart';
+import 'package:regdogapp/screen/navbar_screen/calendar_screen.dart';
+import 'package:regdogapp/screen/register_screen/profile_user_screen.dart';
 import 'package:regdogapp/service/notification_service.dart'; // อาจจะเก็บไว้ใช้ตอนลบ event
 import 'package:regdogapp/providers/current_dog_provider.dart';
 
@@ -130,13 +132,23 @@ class _AddExpenseEventPageState extends State<AddExpenseEventPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              HomeTopBar(
-                showProfile: true,
-                onMenuTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const DogListPage()),
-                ),
-              ),
+             HomeTopBar(
+      showProfile: true,
+      onMenuTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const DogListPage()),
+        );
+      },
+  
+      onProfileTap: () {
+        // 🟢 เปลี่ยนเส้นทางไปหน้า User Profile
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const UserProfileScreen()),
+        );
+      },
+    ),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -315,12 +327,26 @@ class _AddExpenseEventPageState extends State<AddExpenseEventPage> {
         await _firestore.collection('dog_activities').doc(widget.eventId).update(payload);
       }
 
-      if (mounted) {
+     if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
-        Navigator.pop(context); // ปิด Loading
-        Navigator.pop(context); // กลับหน้าก่อนหน้า
+        Navigator.pop(context); // ปิด Loading Dialog
+
+        // 🟢 เปลี่ยนมาใช้คำสั่งนี้ เพื่อเคลียร์หน้าจอและเปิดกลับไปหน้า Calendar พร้อมส่งวันที่ไป
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CalendarPage(
+              selectedDay: widget.selectedDateFromCalendar, // ส่งวันที่กลับไปให้ปฏิทิน
+            ),
+          ),
+          (route) => false,
+        );
+
         messenger.showSnackBar(
-          const SnackBar(content: Text("บันทึกค่าใช้จ่ายเรียบร้อยแล้ว"), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text("บันทึกกิจกรรมเรียบร้อยแล้ว"),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {

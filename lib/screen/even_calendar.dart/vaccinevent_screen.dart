@@ -10,8 +10,12 @@ import 'package:regdogapp/component/upperbar.dart';
 import 'package:regdogapp/screen/dog_list.dart';
 import 'package:regdogapp/component/duration_picker.dart';
 import 'package:regdogapp/component/event_settings.dart';
+import 'package:regdogapp/screen/navbar_screen/calendar_screen.dart';
+import 'package:regdogapp/screen/register_screen/profile_user_screen.dart';
 import 'package:regdogapp/service/notification_service.dart'; 
 import 'package:regdogapp/providers/current_dog_provider.dart';
+
+
 
 class AddVaccineEventPage extends StatefulWidget {
   final DateTime selectedDateFromCalendar;
@@ -148,11 +152,22 @@ class _AddVaccineEventPageState extends State<AddVaccineEventPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              HomeTopBar(
-                showProfile: true,
-                onMenuTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DogListPage())),
-              ),
-
+            HomeTopBar(
+              showProfile: true,
+              onMenuTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const DogListPage()),
+                );
+              },
+          
+              onProfileTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const UserProfileScreen()),
+                );
+              },
+            ),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -311,8 +326,25 @@ class _AddVaccineEventPageState extends State<AddVaccineEventPage> {
       );
 
       if (mounted) {
-        Navigator.pop(context); Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("บันทึกข้อมูลวัคซีนเรียบร้อยแล้ว"), backgroundColor: Colors.green));
+        Navigator.pop(context); // 🟢 2. ปิด Loading Dialog
+
+        // 🟢 2. เปลี่ยนมาใช้ pushAndRemoveUntil กลับไปที่หน้า CalendarPage พร้อมส่งวันที่ไปด้วย
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CalendarPage(
+              selectedDay: widget.selectedDateFromCalendar, 
+            ),
+          ),
+          (route) => false,
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("บันทึกข้อมูลวัคซีนเรียบร้อยแล้ว"), 
+            backgroundColor: Colors.green
+          )
+        );
       }
     } catch (e) {
       if (mounted) Navigator.pop(context);

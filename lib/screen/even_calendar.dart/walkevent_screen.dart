@@ -11,6 +11,7 @@ import 'package:regdogapp/screen/dog_list.dart';
 import 'package:regdogapp/component/duration_picker.dart';
 import 'package:regdogapp/component/distance_picker.dart';
 import 'package:regdogapp/component/event_settings.dart';
+import 'package:regdogapp/screen/navbar_screen/calendar_screen.dart';
 import 'package:regdogapp/service/notification_service.dart';
 import 'package:regdogapp/providers/current_dog_provider.dart'; // 🟢 2. Import CurrentDogProvider
 
@@ -485,10 +486,21 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
         payload: targetEventId,
       );
 
-      if (mounted) {
+     if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
-        Navigator.pop(context);
-        Navigator.pop(context);
+        Navigator.pop(context); // ปิด Loading Dialog
+
+        // 🟢 เปลี่ยนมาใช้คำสั่งนี้ เพื่อเคลียร์หน้าจอและเปิดกลับไปหน้า Calendar พร้อมส่งวันที่ไป
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CalendarPage(
+              selectedDay: widget.selectedDateFromCalendar, // ส่งวันที่กลับไปให้ปฏิทิน
+            ),
+          ),
+          (route) => false,
+        );
+
         messenger.showSnackBar(
           const SnackBar(
             content: Text("บันทึกกิจกรรมเรียบร้อยแล้ว"),

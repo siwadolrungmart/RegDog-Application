@@ -4,14 +4,14 @@ import 'package:regdogapp/screen/dog_list.dart';
 
 class HomeTopBar extends StatelessWidget {
   final VoidCallback? onMenuTap;
-  final VoidCallback? onNotificationTap;
+
   final VoidCallback? onProfileTap;
   final bool showProfile;
 
   const HomeTopBar({
     super.key,
     this.onMenuTap,
-    this.onNotificationTap,
+   
     this.onProfileTap,
     this.showProfile = false,
   });
@@ -46,13 +46,7 @@ class HomeTopBar extends StatelessWidget {
           /// Right - Notification (+ optional profile)
           Row(
             children: [
-              IconButton(
-                onPressed: onNotificationTap,
-                icon: const Icon(
-                  Icons.notifications_none,
-                  size: 24,
-                ),
-              ),
+            
               if (showProfile)
                 IconButton(
                   onPressed: onProfileTap,

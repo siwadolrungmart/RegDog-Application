@@ -68,7 +68,7 @@ class _HomepageState extends State<Homepage> {
           MaterialPageRoute(builder: (context) => const DogListPage()),
         );
       },
-      onNotificationTap: () => debugPrint("Notification tapped"),
+  
       onProfileTap: () {
         // 🟢 เปลี่ยนเส้นทางไปหน้า User Profile
         Navigator.push(

@@ -10,6 +10,7 @@ import 'package:regdogapp/component/upperbar.dart';
 import 'package:regdogapp/component/bar.dart';
 import 'package:regdogapp/component/map_view.dart';
 import 'package:regdogapp/screen/dog_list.dart';
+import 'package:regdogapp/screen/register_screen/profile_user_screen.dart';
 
 // 🟢 อย่าลืมแก้ path ด้านล่างนี้ให้ชี้ไปที่ไฟล์ place_detail.dart ของคุณ
 
@@ -287,15 +288,23 @@ class _PlacePageState extends State<PlacePage> {
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             children: [
-              HomeTopBar(
-                showProfile: true,
-                onMenuTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const DogListPage()),
-                ),
-                onNotificationTap: () => debugPrint("Notification tapped"),
-                onProfileTap: () => debugPrint("Profile tapped"),
-              ),
+             HomeTopBar(
+      showProfile: true,
+      onMenuTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const DogListPage()),
+        );
+      },
+  
+      onProfileTap: () {
+        // 🟢 เปลี่ยนเส้นทางไปหน้า User Profile
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const UserProfileScreen()),
+        );
+      },
+    ),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.only(left: 0, right: 0, bottom: 0),

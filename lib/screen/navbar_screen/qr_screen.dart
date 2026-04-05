@@ -1,5 +1,9 @@
 import 'dart:ui' as ui;
 import 'dart:typed_data';
+import 'dart:io'; // เพิ่มสำหรับ File
+import 'package:http/http.dart' as http; // เพิ่มสำหรับโหลดรูป
+import 'package:gal/gal.dart'; // เพิ่มสำหรับบันทึกรูป
+import 'package:path_provider/path_provider.dart'; // เพิ่มสำหรับ Temporary Path
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; 
 import 'package:google_fonts/google_fonts.dart';
@@ -8,7 +12,10 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:regdogapp/component/bar.dart'; 
+import 'package:regdogapp/component/bar.dart';
+import 'package:regdogapp/component/upperbar.dart';
+import 'package:regdogapp/screen/dog_list.dart';
+import 'package:regdogapp/screen/register_screen/profile_user_screen.dart'; 
 import 'package:regdogapp/service/dogdatabase_service.dart';
 import 'package:regdogapp/providers/current_dog_provider.dart';
 
@@ -24,7 +31,6 @@ class _QrCodePageState extends State<QrCodePage> {
   final _formKey = GlobalKey<FormState>();
   
   int _currentIndex = 0;
-  
   bool _hasData = false; 
   bool _isLoading = false;
 
@@ -47,7 +53,6 @@ class _QrCodePageState extends State<QrCodePage> {
   void _loadExistingData() {
     final provider = Provider.of<CurrentDogProvider>(context, listen: false);
     
-    // ตรงนี้ยังใช้ Provider โหลดข้อมูลแบบฟอร์มค้างไว้ได้ (ถ้ามี)
     if (provider.qrTrackingData != null && provider.qrTrackingData!.isNotEmpty) {
       setState(() {
         _ownerNameController.text = provider.ownerContactName;
@@ -59,7 +64,9 @@ class _QrCodePageState extends State<QrCodePage> {
         if (!['ไม่ระบุ', 'ปกติ', 'หาย'].contains(status)) status = 'ไม่ระบุ';
         _dogStatus = status;
         
-        _qrDataLink = _dbService.generateQrWebLink(provider.currentDogId ?? '');
+        // 🟢 ดึง Token ล่าสุดจาก Database มาสร้างลิงก์ (Security System)
+        String currentToken = provider.qrTrackingData?['activeQrToken'] ?? '';
+        _qrDataLink = _dbService.generateQrWebLink(provider.currentDogId ?? '', currentToken);
         _hasData = true; 
       });
     }
@@ -113,7 +120,8 @@ class _QrCodePageState extends State<QrCodePage> {
 
     setState(() => _isLoading = true);
 
-    String link = _dbService.generateQrWebLink(dogId);
+    String newToken = DateTime.now().millisecondsSinceEpoch.toString();
+    String link = _dbService.generateQrWebLink(dogId, newToken);
     String? uploadedQrUrl;
 
     try {
@@ -140,6 +148,7 @@ class _QrCodePageState extends State<QrCodePage> {
       address: _addressController.text.trim(),
       note: _noteController.text.trim(),
       dogStatus: _dogStatus,
+      activeToken: newToken, 
     );
 
     if (uploadedQrUrl != null) {
@@ -148,7 +157,6 @@ class _QrCodePageState extends State<QrCodePage> {
       }, SetOptions(merge: true));
     }
 
-    // สั่ง Provider โหลดข้อมูลใหม่หลังจากเราสร้าง QR ไปแล้ว
     await provider.selectDogById(dogId);
 
     setState(() {
@@ -165,7 +173,6 @@ class _QrCodePageState extends State<QrCodePage> {
 
   @override
   Widget build(BuildContext context) {
-    // 🟢 ดึง dogId มาจาก Provider ก่อน เพื่อเอาไปค้นหาใน Database
     final provider = Provider.of<CurrentDogProvider>(context);
     final currentDogId = provider.currentDogId;
 
@@ -174,37 +181,34 @@ class _QrCodePageState extends State<QrCodePage> {
       body: SafeArea(
         child: Column(
           children: [
+            HomeTopBar(
+              showProfile: true,
+              onMenuTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DogListPage())),
+              onProfileTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const UserProfileScreen())),
+            ),
             Expanded(
               child: _isLoading || currentDogId == null
                 ? const Center(child: CircularProgressIndicator())
-                // 🟢 ใช้ FutureBuilder เพื่อดึงข้อมูลสดๆ จาก Firebase โดยตรงด้วย dogId
                 : FutureBuilder<DocumentSnapshot>(
                     future: _dbService.getDogById(currentDogId),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(child: Text("กำลังโหลดข้อมูลจากฐานข้อมูล...", style: GoogleFonts.inter()));
+                        return Center(child: Text("กำลังโหลดข้อมูล...", style: GoogleFonts.inter()));
                       }
                       
                       if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.exists) {
                         return Center(child: Text("ไม่พบข้อมูลสุนัข", style: GoogleFonts.inter()));
                       }
 
-                      // 🟢 แปลงข้อมูลที่ได้จาก Firebase มาเป็น Map
                       Map<String, dynamic> rawData = snapshot.data!.data() as Map<String, dynamic>;
-
                       DateTime? birthDate;
                       if (rawData['birthDate'] is Timestamp) {
                         birthDate = (rawData['birthDate'] as Timestamp).toDate();
                       }
                       
                       final String? qrImageUrl = rawData['qrImageUrl'];
-                      
-                      String weightText = 'ไม่ระบุ';
-                      if (rawData['weight'] != null) {
-                         weightText = '${rawData['weight']} กก.';
-                      }
+                      String weightText = rawData['weight'] != null ? '${rawData['weight']} กก.' : 'ไม่ระบุ';
 
-                      // 🟢 จัดเตรียมข้อมูลสำหรับส่งเข้าหน้า UI
                       final Map<String, String> dogData = {
                         'name': rawData['name'] ?? 'ไม่ระบุ',
                         'gender': rawData['gender'] ?? 'ไม่ระบุ',
@@ -212,9 +216,9 @@ class _QrCodePageState extends State<QrCodePage> {
                         'dob': birthDate != null ? DateFormat('d MMMM yyyy', 'th').format(birthDate) : 'ไม่ระบุ',
                         'age': _calculateAge(birthDate),
                         'weight': weightText,
-                        'microchip': (rawData['microchip'] != null && rawData['microchip'].toString().isNotEmpty) ? rawData['microchip'] : 'ไม่มี',
-                        'disease': (rawData['diseases'] != null && rawData['diseases'].toString().isNotEmpty) ? rawData['diseases'] : 'ไม่มี',
-                        'imageUrl': (rawData['photoUrl'] != null && rawData['photoUrl'].toString().isNotEmpty) ? rawData['photoUrl'] : 'https://via.placeholder.com/150',
+                        'microchip': (rawData['microchip']?.toString().isNotEmpty ?? false) ? rawData['microchip'] : 'ไม่มี',
+                        'disease': (rawData['diseases']?.toString().isNotEmpty ?? false) ? rawData['diseases'] : 'ไม่มี',
+                        'imageUrl': (rawData['photoUrl']?.toString().isNotEmpty ?? false) ? rawData['photoUrl'] : 'https://via.placeholder.com/150',
                       };
 
                       return SingleChildScrollView(
@@ -240,12 +244,8 @@ class _QrCodePageState extends State<QrCodePage> {
     );
   }
 
-  // ==========================================
-  // ส่วน UI: ฟอร์มกรอกข้อมูล 
-  // ==========================================
   Widget _buildFormState(Map<String, String> dogData) {
     const Color primaryBlue = Color(0xFFCBE4F0);
-
     return Form(
       key: _formKey,
       child: Column(
@@ -295,7 +295,7 @@ class _QrCodePageState extends State<QrCodePage> {
 }
 
 // ==========================================
-// ส่วน UI: หน้าแสดง QR Code 
+// ส่วน UI: หน้าแสดง QR Code (แก้ไขฟังก์ชันบันทึกและปุ่ม)
 // ==========================================
 class QrDisplayState extends StatelessWidget {
   final String qrLink;
@@ -303,6 +303,42 @@ class QrDisplayState extends StatelessWidget {
   final VoidCallback onEdit;
 
   const QrDisplayState({super.key, required this.qrLink, this.qrImageUrl, required this.onEdit});
+
+  // 🔥 ฟังก์ชันใหม่: บันทึกรูปภาพลง Gallery
+  Future<void> _saveQrToGallery(BuildContext context) async {
+    if (qrImageUrl == null || qrImageUrl!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ไม่พบรูปภาพคิวอาร์โค้ด")));
+      return;
+    }
+
+    try {
+      // 1. ขอ Permission (Gal จะจัดการให้อัตโนมัติในเวอร์ชันใหม่)
+      // 2. ดาวน์โหลด Byte Data จาก Firebase Storage
+      final response = await http.get(Uri.parse(qrImageUrl!));
+      final Uint8List bytes = response.bodyBytes;
+
+      // 3. สร้างไฟล์ชั่วคราว
+      final tempDir = await getTemporaryDirectory();
+      final path = '${tempDir.path}/qr_download.png';
+      final file = File(path);
+      await file.writeAsBytes(bytes);
+
+      // 4. บันทึกลง Gallery
+      await Gal.putImage(path);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("บันทึกรูปภาพลงเครื่องสำเร็จ!"), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("เกิดข้อผิดพลาดในการบันทึก: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -334,31 +370,32 @@ class QrDisplayState extends StatelessWidget {
         ),
         
         const SizedBox(height: 20),
-        Text("ใช้คิวอาร์โค้ดหรือลิงก์เพื่อให้\nผู้ใช้สแกนดูข้อมูลสุนัข", textAlign: TextAlign.center, style: GoogleFonts.mitr(color: Colors.grey.shade600, fontSize: 14)),
+        Text("ผู้ที่สแกนคิวอาร์โค้ดนี้\nจะเห็นข้อมูลติดต่อที่คุณระบุไว้", textAlign: TextAlign.center, style: GoogleFonts.mitr(color: Colors.grey.shade600, fontSize: 14)),
         const SizedBox(height: 40),
         
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildIconAction(Icons.link, "คัดลอกลิงก์", () { /* TODO */ }),
-            const SizedBox(width: 40),
-            _buildIconAction(Icons.ios_share, "แชร์", () { /* TODO */ }),
-            const SizedBox(width: 40),
-            _buildIconAction(Icons.download_outlined, "บันทึก", () { /* TODO */ }),
-          ],
+        // 🟢 ปรับเหลือแค่ปุ่มบันทึก และทำให้กดได้ชัดเจน
+        Center(
+          child: _buildIconAction(Icons.download_for_offline, "บันทึกลงเครื่อง", () => _saveQrToGallery(context)),
         ),
         
-        const SizedBox(height: 40),
-        OutlinedButton.icon(
-          onPressed: onEdit,
-          icon: const Icon(Icons.edit, color: Colors.black87, size: 18),
-          label: Text("แก้ไขคิวอาร์โค้ด", style: GoogleFonts.mitr(color: Colors.black87, fontWeight: FontWeight.w500)),
-          style: OutlinedButton.styleFrom(
-            backgroundColor: Colors.white, side: const BorderSide(color: Color(0xFFFFECA5), width: 2),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+        const SizedBox(height: 50),
+        
+        // 🟢 ปรับปุ่มแก้ไขให้ยาวเต็มสัดส่วน (double.infinity)
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: onEdit,
+            icon: const Icon(Icons.edit_note, color: Colors.black87, size: 22),
+            label: Text("แก้ไขคิวอาร์โค้ด", style: GoogleFonts.mitr(color: Colors.black87, fontWeight: FontWeight.w500, fontSize: 16)),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: Colors.white, 
+              side: const BorderSide(color: Color(0xFFFFECA5), width: 2),
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            ),
           ),
         ),
+        const SizedBox(height: 20),
       ],
     );
   }
@@ -369,21 +406,20 @@ class QrDisplayState extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: const Color(0xFFCBE4F0).withOpacity(0.5), shape: BoxShape.circle),
-            child: Icon(icon, size: 28, color: const Color(0xFF4A7A8C)),
+            padding: const EdgeInsets.all(15),
+            decoration: BoxDecoration(color: const Color(0xFFCBE4F0), shape: BoxShape.circle),
+            child: Icon(icon, size: 32, color: const Color(0xFF4A7A8C)),
           ),
           const SizedBox(height: 8),
-          Text(label, style: GoogleFonts.mitr(fontSize: 12, fontWeight: FontWeight.w400, color: Colors.black87)),
+          Text(label, style: GoogleFonts.mitr(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black87)),
         ],
       ),
     );
   }
 }
 
-// ==========================================
-// ส่วน UI: Components ย่อย 
-// ==========================================
+// ... ส่วนอื่น (DogProfileHeader, DogInfoSection, OwnerInfoSection) คงเดิม ...
+
 class DogProfileHeader extends StatelessWidget {
   final String imageUrl, dogName;
   const DogProfileHeader({super.key, required this.imageUrl, required this.dogName});

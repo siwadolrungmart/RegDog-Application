@@ -1,3 +1,6 @@
+
+
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart'; 
@@ -92,13 +95,19 @@ class DatabaseService {
     return _dogCollection.doc(dogId).collection('weight_history').orderBy('recordedAt', descending: true).snapshots();
   }
 
+// ==========================================
+  // 🟢 6. QR CODE TRACKING (แก้ไขใหม่)
   // ==========================================
-  // 🟢 6. QR CODE TRACKING
-  // ==========================================
+  
+  // เพิ่ม parameter 'activeToken' เพื่อรับรหัสสุ่มจากหน้า UI มาบันทึก
   Future<bool> saveQrTrackingInfo({
-    required String dogId, required String ownerContactName,
-    required String phone, required String address,
-    required String note, required String dogStatus,
+    required String dogId, 
+    required String ownerContactName,
+    required String phone, 
+    required String address,
+    required String note, 
+    required String dogStatus,
+    required String activeToken, // 🔥 เพิ่มตัวนี้
   }) async {
     try {
       await _dogCollection.doc(dogId).set({
@@ -111,6 +120,8 @@ class DatabaseService {
           'lastUpdatedAt': FieldValue.serverTimestamp(),
         },
         'currentStatus': dogStatus, 
+        'activeQrToken': activeToken, // ✅ บันทึก Token ใหม่ลงฐานข้อมูลเสมอ
+        'isQrActive': true,           // ✅ เปิดสถานะว่าคิวอาร์พร้อมใช้งาน
       }, SetOptions(merge: true));
       return true;
     } catch (e) {
@@ -119,7 +130,9 @@ class DatabaseService {
     }
   }
 
-String generateQrWebLink(String dogId) {
-    return "https://senior-project-regdog.web.app/?dogId=$dogId";
+  // แก้ให้รับ token เข้ามา เพื่อสร้าง Link ที่ถูกต้อง
+  String generateQrWebLink(String dogId, String token) {
+    // แก้ yourdomain.com เป็นลิงก์เว็บจริงของคุณ (ถ้ามี)
+    return "https://senior-project-regdog.web.app/scan?dogId=$dogId&token=$token";
   }
 }

@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:regdogapp/component/upperbar.dart';
 import 'package:regdogapp/component/bar.dart';
 import 'package:regdogapp/screen/dog_list.dart';
+import 'package:regdogapp/screen/register_screen/profile_user_screen.dart';
 import 'package:regdogapp/service/dogdatabase_service.dart';
 import 'package:regdogapp/providers/current_dog_provider.dart';
 import 'package:intl/intl.dart';
@@ -456,21 +457,23 @@ class _DogProfilePageState extends State<DogProfilePage> {
           children: [
             Column(
               children: [
-                HomeTopBar(
-                  showProfile: true,
-                  onMenuTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const DogListPage(),
-                      ),
-                    ).then((_) {
-                      _syncWithProvider();
-                    });
-                  },
-                  onNotificationTap: () => debugPrint("Notification tapped"),
-                  onProfileTap: () => debugPrint("Profile tapped"),
-                ),
+               HomeTopBar(
+      showProfile: true,
+      onMenuTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const DogListPage()),
+        );
+      },
+  
+      onProfileTap: () {
+        // 🟢 เปลี่ยนเส้นทางไปหน้า User Profile
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const UserProfileScreen()),
+        );
+      },
+    ),
                 Expanded(
                   child: Consumer<CurrentDogProvider>(
                     builder: (context, provider, child) {

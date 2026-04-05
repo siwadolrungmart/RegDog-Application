@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:regdogapp/component/upperbar.dart';
 import 'package:regdogapp/providers/current_dog_provider.dart';
+import 'package:regdogapp/screen/register_screen/profile_user_screen.dart';
 import 'package:regdogapp/screen/register_screen/registerdogname.dart';
 import 'package:regdogapp/screen/navbar_screen/home_screen.dart';
 import 'package:regdogapp/service/dogdatabase_service.dart';
@@ -21,7 +23,7 @@ class DogListPage extends StatefulWidget {
 
 class _DogListPageState extends State<DogListPage> {
   final DatabaseService _db = DatabaseService();
-  
+
   // สร้างตัวแปรเก็บ uid ปัจจุบัน
   late String _currentUserId;
 
@@ -31,7 +33,7 @@ class _DogListPageState extends State<DogListPage> {
     // ดึง uid ของผู้ใช้งานปัจจุบันที่กำลังล็อกอินอยู่
     final user = FirebaseAuth.instance.currentUser;
     // ถ้า user ไม่เป็น null ให้เก็บ uid ไว้ (ถ้าเป็น null ให้ใส่ string ว่างกันเหนียวไว้ก่อน)
-    _currentUserId = user?.uid ?? ''; 
+    _currentUserId = user?.uid ?? '';
   }
 
   @override
@@ -44,8 +46,29 @@ class _DogListPageState extends State<DogListPage> {
           body: SafeArea(
             child: Column(
               children: [
-                const TopBar(),
-               Expanded(
+                HomeTopBar(
+                  showProfile: true,
+                  onMenuTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const DogListPage(),
+                      ),
+                    );
+                  },
+
+                  onProfileTap: () {
+                    // 🟢 เปลี่ยนเส้นทางไปหน้า User Profile
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const UserProfileScreen(showBottomBar: false),
+                      ),
+                    );
+                  },
+                ),
+                Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: _db.getDogsByOwner(_currentUserId), // ใช้ตัวแปรใหม่
                     builder: (context, snapshot) {
@@ -73,7 +96,7 @@ class _DogListPageState extends State<DogListPage> {
                         String ageStr = 'ไม่ทราบอายุ';
                         if (birthDate != null) {
                           final now = DateTime.now();
-                          
+
                           int years = now.year - birthDate.year;
                           int months = now.month - birthDate.month;
                           int days = now.day - birthDate.day;
@@ -81,7 +104,11 @@ class _DogListPageState extends State<DogListPage> {
                           if (days < 0) {
                             months--;
                             // หาวันสุดท้ายของเดือนก่อนหน้า
-                            final previousMonth = DateTime(now.year, now.month, 0);
+                            final previousMonth = DateTime(
+                              now.year,
+                              now.month,
+                              0,
+                            );
                             days += previousMonth.day;
                           }
 
@@ -95,7 +122,7 @@ class _DogListPageState extends State<DogListPage> {
                           if (years > 0) ageParts.add('$years ปี');
                           if (months > 0) ageParts.add('$months เดือน');
                           if (days > 0) ageParts.add('$days วัน');
-                          
+
                           // ถ้าอายุน้อยกว่า 1 วัน (เพิ่งเกิดวันนี้)
                           if (ageParts.isEmpty) {
                             ageStr = '0 วัน';
@@ -115,7 +142,8 @@ class _DogListPageState extends State<DogListPage> {
 
                         return {
                           'docId': doc.id,
-                          'rawData': data, // 🟢 เพิ่มบรรทัดนี้: เก็บข้อมูลดิบส่งให้ Provider
+                          'rawData':
+                              data, // 🟢 เพิ่มบรรทัดนี้: เก็บข้อมูลดิบส่งให้ Provider
                           'name': (data['name'] ?? 'ไม่ทราบชื่อ').toString(),
                           // -----------------------------------------------------
                           // 3. ปรับ Format วันเกิดเป็น dd MM yyyy (เช่น 23 11 2026)
@@ -124,7 +152,8 @@ class _DogListPageState extends State<DogListPage> {
                               ? DateFormat('dd MM yyyy').format(birthDate)
                               : 'ไม่ทราบวันที่',
                           'age': ageStr,
-                          'breed': (data['breed'] ?? 'ไม่ทราบพันธุ์').toString(),
+                          'breed': (data['breed'] ?? 'ไม่ทราบพันธุ์')
+                              .toString(),
                           'weight': weightStr,
                           'image': (data['photoUrl'] ?? '').toString(),
                         };
@@ -203,11 +232,7 @@ class DogCard extends StatelessWidget {
   final Map<String, dynamic> dogData;
   final String docId;
 
-  const DogCard({
-    super.key,
-    required this.dogData,
-    required this.docId,
-  });
+  const DogCard({super.key, required this.dogData, required this.docId});
 
   @override
   Widget build(BuildContext context) {
@@ -358,15 +383,10 @@ class DogCardImage extends StatelessWidget {
                   if (loadingProgress == null) return child;
                   return const Center(child: CircularProgressIndicator());
                 },
-                errorBuilder: (context, error, stackTrace) => Image.asset(
-                  placeholderAssetPath,
-                  fit: BoxFit.cover,
-                ),
+                errorBuilder: (context, error, stackTrace) =>
+                    Image.asset(placeholderAssetPath, fit: BoxFit.cover),
               )
-            : Image.asset(
-                placeholderAssetPath,
-                fit: BoxFit.cover,
-              ),
+            : Image.asset(placeholderAssetPath, fit: BoxFit.cover),
       ),
     );
   }

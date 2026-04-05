@@ -13,6 +13,7 @@ import 'package:regdogapp/screen/even_calendar.dart/trainevent_screen.dart';
 import 'package:regdogapp/screen/even_calendar.dart/vaccinevent_screen.dart';
 import 'package:regdogapp/screen/even_calendar.dart/vetvisitevent_screen.dart';
 import 'package:regdogapp/screen/even_calendar.dart/walkevent_screen.dart';
+import 'package:regdogapp/screen/register_screen/profile_user_screen.dart';
 
 class EventCategoryPage extends StatefulWidget {
   // รับค่าวันที่เลือกมาจากหน้า Calendar
@@ -45,16 +46,22 @@ class _EventCategoryPageState extends State<EventCategoryPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               HomeTopBar(
-                showProfile: true,
-                onMenuTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const DogListPage()),
-                  );
-                },
-                onNotificationTap: () => debugPrint("Notification tapped"),
-                onProfileTap: () => debugPrint("Profile tapped"),
-              ),
+      showProfile: true,
+      onMenuTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const DogListPage()),
+        );
+      },
+  
+      onProfileTap: () {
+        // 🟢 เปลี่ยนเส้นทางไปหน้า User Profile
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const UserProfileScreen()),
+        );
+      },
+    ),
 
               Container(
                 width: double.infinity,

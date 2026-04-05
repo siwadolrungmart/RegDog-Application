@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
+import 'package:regdogapp/screen/register_screen/profile_user_screen.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 
@@ -22,7 +23,11 @@ import 'package:regdogapp/screen/even_calendar.dart/vetvisitevent_screen.dart';
 import 'package:regdogapp/screen/even_calendar.dart/expense_screen.dart';
 
 class CalendarPage extends StatefulWidget {
-  const CalendarPage({super.key});
+  // 🟢 1. เพิ่มตัวแปรรับค่า selectedDay 
+  final DateTime? selectedDay;
+
+  // 🟢 2. เพิ่ม this.selectedDay ใน Constructor
+  const CalendarPage({super.key, this.selectedDay});
 
   @override
   State<CalendarPage> createState() => _CalendarPageState();
@@ -30,7 +35,9 @@ class CalendarPage extends StatefulWidget {
 
 class _CalendarPageState extends State<CalendarPage> {
   int _currentIndex = 1;
-  DateTime _focusedDay = DateTime.now();
+  
+  // 🟢 3. ปรับตัวแปรให้รอรับค่าจาก initState
+  late DateTime _focusedDay;
   DateTime? _selectedDay;
 
   List<QueryDocumentSnapshot> _allActivities = [];
@@ -40,6 +47,8 @@ class _CalendarPageState extends State<CalendarPage> {
   @override
   void initState() {
     super.initState();
+    // 🟢 4. ถ้ามี selectedDay ส่งมาให้ใช้วันนั้น ถ้าไม่มีให้ใช้วันปัจจุบัน
+    _focusedDay = widget.selectedDay ?? DateTime.now();
     _selectedDay = _focusedDay;
   }
 
@@ -186,7 +195,6 @@ class _CalendarPageState extends State<CalendarPage> {
   Widget build(BuildContext context) {
     final selectedEvents = _selectedDay != null ? _getEventsForDay(_selectedDay!) : [];
 
-    // 🟢 1. จัดกลุ่มข้อมูล
     List<QueryDocumentSnapshot> activityEvents = [];
     List<QueryDocumentSnapshot> healthEvents = [];
     List<QueryDocumentSnapshot> expenseEvents = [];
@@ -203,7 +211,6 @@ class _CalendarPageState extends State<CalendarPage> {
       }
     }
 
-    // 🟢 2. ฟังก์ชันสำหรับเรียงลำดับเวลา (น้อยไปมาก / 00:00 ไป 23:59)
     int compareTimes(QueryDocumentSnapshot a, QueryDocumentSnapshot b) {
       final timeA = _parseDateTime((a.data() as Map<String, dynamic>)['start_time']) ?? DateTime.now();
       final timeB = _parseDateTime((b.data() as Map<String, dynamic>)['start_time']) ?? DateTime.now();
@@ -214,9 +221,8 @@ class _CalendarPageState extends State<CalendarPage> {
     healthEvents.sort(compareTimes);
     expenseEvents.sort(compareTimes);
 
-    // 🟢 3. ฟังก์ชันช่วยสร้าง Group ของ UI แต่ละหมวดหมู่
     Widget buildEventGroup(String title, List<QueryDocumentSnapshot> eventsList) {
-      if (eventsList.isEmpty) return const SizedBox(); // ถ้าไม่มีข้อมูล ไม่ต้องแสดงหมวดหมู่นี้
+      if (eventsList.isEmpty) return const SizedBox(); 
       
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,7 +283,7 @@ class _CalendarPageState extends State<CalendarPage> {
               ),
             );
           }).toList(),
-          const SizedBox(height: 0), // เว้นระยะห่างระหว่างกลุ่ม
+          const SizedBox(height: 0), 
         ],
       );
     }
@@ -295,9 +301,19 @@ class _CalendarPageState extends State<CalendarPage> {
             children: [
               HomeTopBar(
                 showProfile: true,
-                onMenuTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DogListPage())),
+                onMenuTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DogListPage()),
+                  );
+                },
+                onProfileTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const UserProfileScreen()),
+                  );
+                },
               ),
-
               Container(
                 width: double.infinity,
                 constraints: const BoxConstraints(minHeight: 690),
@@ -424,7 +440,6 @@ class _CalendarPageState extends State<CalendarPage> {
                     ),
                     const SizedBox(height: 12),
 
-                    // 🟢 4. นำฟังก์ชัน buildEventGroup มาแสดงผลตามลำดับที่ต้องการ
                     if (selectedEvents.isEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 20),

@@ -7,11 +7,18 @@ import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:regdogapp/component/upperbar.dart';
 import 'package:regdogapp/component/bar.dart';
+import 'package:regdogapp/screen/dog_list.dart';
 // 🟢 เพิ่ม Import หน้า Login
 import 'package:regdogapp/screen/login_screen.dart'; 
 
 class UserProfileScreen extends StatefulWidget {
-  const UserProfileScreen({super.key});
+  // 🟢 1. เพิ่มตัวแปรสำหรับกำหนดการแสดงผล Bottom Bar
+  final bool showBottomBar;
+
+  const UserProfileScreen({
+    super.key,
+    this.showBottomBar = true, // กำหนดค่าเริ่มต้นเป็น true (แสดงเสมอหากไม่ได้ระบุเป็นอย่างอื่น)
+  });
 
   @override
   State<UserProfileScreen> createState() => _UserProfileScreenState();
@@ -49,7 +56,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     super.dispose();
   }
 
-  // 🟢 1. ดึงข้อมูล User จาก Firestore
+  // 🟢 ดึงข้อมูล User จาก Firestore
   Future<void> _loadUserData() async {
     try {
       User? user = FirebaseAuth.instance.currentUser;
@@ -66,14 +73,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             _email = data['email'] ?? user.email ?? 'ไม่ระบุอีเมล';
             _existingImageUrl = data['profileImageUrl'];
             
-            // นำข้อมูลไปใส่ใน Controller เผื่อผู้ใช้กด Edit
             _nameController.text = _displayName;
             _emailController.text = _email;
             
             _isLoading = false;
           });
         } else {
-          // กรณีไม่มีเอกสารใน users collection
           setState(() {
             _displayName = user.displayName ?? 'ไม่ระบุชื่อ';
             _email = user.email ?? 'ไม่ระบุอีเมล';
@@ -90,7 +95,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
   }
 
-  // 🟢 2. เลือกรูปโปรไฟล์ใหม่
+  // 🟢 เลือกรูปโปรไฟล์ใหม่
   Future<void> _pickProfileImage() async {
     final pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
@@ -104,7 +109,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
   }
 
-  // 🟢 3. บันทึกข้อมูล
+  // 🟢 บันทึกข้อมูล
   Future<void> _saveChanges() async {
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -167,7 +172,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
   }
 
-  // 🟢 4. ยกเลิกการแก้ไข
+  // 🟢 ยกเลิกการแก้ไข
   void _cancelEditing() {
     setState(() {
       _nameController.text = _displayName;
@@ -183,20 +188,28 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     const Color yellowBtn = Color(0xFFFFEFA6);
 
     return Scaffold(
-    
-      bottomNavigationBar: CustomBottomNavBar(
-        selectedIndex: _currentIndex,
-        onItemTapped: (index) {
-          setState(() => _currentIndex = index);
-        },
-      ),
+      // 🟢 2. เช็คเงื่อนไขก่อนแสดงผล BottomNavBar
+      bottomNavigationBar: widget.showBottomBar
+          ? CustomBottomNavBar(
+              selectedIndex: _currentIndex,
+              onItemTapped: (index) {
+                setState(() => _currentIndex = index);
+              },
+            )
+          : null, // ถ้า showBottomBar เป็น false จะคืนค่า null ทำให้ไม่แสดงบาร์
       body: SafeArea(
         child: Column(
           children: [
             HomeTopBar(
-              showProfile: false, 
-              onMenuTap: () => Navigator.pop(context), 
-            ),
+  showProfile: false, 
+  onMenuTap: () {
+    // เปลี่ยนจาก Navigator.pop เป็นการระบุหน้าใหม่
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const DogListPage()), // เปลี่ยน HomeScreen เป็นชื่อหน้าของคุณ
+    );
+  }, 
+),
             
             Expanded(
               child: _isLoading
@@ -330,13 +343,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                 width: double.infinity,
                                 child: TextButton.icon(
                                   onPressed: () async {
-                                    // 1. สั่ง Firebase ให้ Sign Out
                                     await FirebaseAuth.instance.signOut();
-                                    
-                                    // 2. เช็คว่าหน้าต่างยังอยู่ไหมเพื่อป้องกัน Error
                                     if (!context.mounted) return;
-
-                                    // 3. กลับไปหน้า LoginScreen และล้างประวัติหน้าเก่าทั้งหมดทิ้ง
                                     Navigator.of(context).pushAndRemoveUntil(
                                       MaterialPageRoute(
                                         builder: (context) => const LoginScreen(),
