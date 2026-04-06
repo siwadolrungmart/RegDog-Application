@@ -13,7 +13,7 @@ import 'package:regdogapp/screen/qr_scan_result_page.dart';
 import 'package:regdogapp/screen/register_screen/profile_user_screen.dart';
 import 'package:regdogapp/service/notification_service.dart'; 
 import 'firebase_options.dart';
-
+import 'package:timezone/data/latest_all.dart' as tz;
 // ==========================================
 // 🚀 1. ฟังก์ชัน main() 
 // ==========================================
@@ -23,7 +23,8 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
+tz.initializeTimeZones();
+  await NotificationService.init();
   runApp(
     MultiProvider(
       providers: [
