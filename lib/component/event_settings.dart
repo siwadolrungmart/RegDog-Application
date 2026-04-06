@@ -9,12 +9,12 @@ import 'package:intl/intl.dart';
 // 1. Data Model สำหรับเก็บข้อมูลการทำซ้ำ
 // ==========================================
 class RecurrenceData {
-  final String repeatType; // 'none', 'daily', 'weekly', 'monthly', 'yearly'
-  final int interval; // >= 1
-  final List<int> weeklyDays; // 1=Mon, 7=Sun
-  final String monthlyMode; // 'dayOfMonth' หรือ 'weekdayOfMonth'
-  final DateTime? endDate; // เงื่อนไขหยุดแบบวันที่
-  final int? count; // เงื่อนไขหยุดแบบจำนวนครั้ง
+  final String repeatType; 
+  final int interval; 
+  final List<int> weeklyDays; 
+  final String monthlyMode; 
+  final DateTime? endDate; 
+  final int? count; 
 
   RecurrenceData({
     required this.repeatType,
@@ -58,7 +58,7 @@ class ReminderPicker extends StatelessWidget {
         .key;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10,vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey[300]!), 
         borderRadius: BorderRadius.circular(8)
@@ -105,8 +105,10 @@ class RecurrenceSection extends StatefulWidget {
 }
 
 class _RecurrenceSectionState extends State<RecurrenceSection> {
+  // แก้ไข: ไม่ใช้ late ในจุดที่เสี่ยง
   String _selectedDropdown = "ไม่ทำซ้ำ";
   bool _isCustomMode = false;
+  bool _isInitializing = true; // ตัวแปรคุมจังหวะโหลดข้อมูลเก่า
 
   final List<String> _dayNamesFull = ["วันจันทร์", "วันอังคาร", "วันพุธ", "วันพฤหัสบดี", "วันศุกร์", "วันเสาร์", "วันอาทิตย์"];
   final List<String> _monthNamesShort = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
@@ -143,13 +145,13 @@ class _RecurrenceSectionState extends State<RecurrenceSection> {
   @override
   void initState() {
     super.initState();
-    _intervalController.addListener(_notifyParent);
-    _countController.addListener(_notifyParent);
-    
+    _isInitializing = true;
+
     if (widget.initialData != null && widget.initialData!.repeatType != 'none') {
       final init = widget.initialData!;
       _intervalController.text = init.interval.toString();
 
+      // เช็คว่าเป็นค่า Default หรือไม่
       if (init.interval == 1 && init.endDate == null && init.count == null) {
         if (init.repeatType == 'daily') _selectedDropdown = "ทุกวัน";
         else if (init.repeatType == 'weekly' && init.weeklyDays.length == 1 && init.weeklyDays.first == widget.baseDate.weekday) _selectedDropdown = _weeklyLabel;
@@ -162,11 +164,13 @@ class _RecurrenceSectionState extends State<RecurrenceSection> {
 
       _isCustomMode = (_selectedDropdown == "กำหนดเอง...");
 
+      // ตั้งค่าหน่วย Custom
       if (init.repeatType == 'daily') _customRepeatUnit = "วัน";
       else if (init.repeatType == 'weekly') _customRepeatUnit = "สัปดาห์";
       else if (init.repeatType == 'monthly') _customRepeatUnit = "เดือน";
       else if (init.repeatType == 'yearly') _customRepeatUnit = "ปี";
 
+      // ตั้งค่าวันในสัปดาห์
       if (init.repeatType == 'weekly' && init.weeklyDays.isNotEmpty) {
         for (var day in init.weeklyDays) {
           if (day >= 1 && day <= 7) _weeklyDays[day - 1] = true;
@@ -175,6 +179,7 @@ class _RecurrenceSectionState extends State<RecurrenceSection> {
         _weeklyDays[widget.baseDate.weekday - 1] = true;
       }
 
+      // ตั้งค่าเงื่อนไขสิ้นสุด
       if (init.endDate != null) {
         _endCondition = "ระบุวันที่";
         _repeatEndDate = init.endDate;
@@ -189,7 +194,14 @@ class _RecurrenceSectionState extends State<RecurrenceSection> {
       _weeklyDays[widget.baseDate.weekday - 1] = true;
     }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _notifyParent());
+    // หน่วงเวลาเล็กน้อยเพื่อให้ Widget วาดเสร็จก่อนปลดล็อคการส่งข้อมูล
+    Future.delayed(Duration.zero, () {
+      if (mounted) {
+        setState(() => _isInitializing = false);
+        _intervalController.addListener(_notifyParent);
+        _countController.addListener(_notifyParent);
+      }
+    });
   }
 
   @override
@@ -209,7 +221,7 @@ class _RecurrenceSectionState extends State<RecurrenceSection> {
           _repeatEndDate = widget.baseDate.add(const Duration(days: 1));
         }
       });
-      WidgetsBinding.instance.addPostFrameCallback((_) => _notifyParent());
+      _notifyParent();
     }
   }
 
@@ -222,48 +234,51 @@ class _RecurrenceSectionState extends State<RecurrenceSection> {
     super.dispose();
   }
 
-  // 🟢 ฟังก์ชันใหม่: จำลองหา "วันที่สิ้นสุดจริง" จากจำนวนครั้ง
   DateTime _calculateEndDateFromCount(DateTime start, String repeatType, int interval, List<int> weeklyDays, int count) {
     if (count <= 1) return start;
-
-    if (repeatType == 'daily') {
-      return start.add(Duration(days: (count - 1) * interval));
-    } else if (repeatType == 'weekly') {
-      DateTime current = start;
-      int generated = 0;
-      DateTime startMonday = start.subtract(Duration(days: start.weekday - 1));
-
-      int safety = 0;
-      while (generated < count && safety < 1000) {
-        if (weeklyDays.isEmpty || weeklyDays.contains(current.weekday)) {
-           DateTime currentMonday = current.subtract(Duration(days: current.weekday - 1));
-           int weeksDiff = currentMonday.difference(startMonday).inDays ~/ 7;
-           if (weeksDiff % interval == 0) {
-             generated++;
-             if (generated >= count) return current;
-           }
+    try {
+      if (repeatType == 'daily') {
+        return start.add(Duration(days: (count - 1) * interval));
+      } else if (repeatType == 'weekly') {
+        DateTime current = start;
+        int generated = 0;
+        DateTime startMonday = start.subtract(Duration(days: start.weekday - 1));
+        int safety = 0;
+        while (generated < count && safety < 2000) {
+          if (weeklyDays.isEmpty || weeklyDays.contains(current.weekday)) {
+             DateTime currentMonday = current.subtract(Duration(days: current.weekday - 1));
+             int weeksDiff = currentMonday.difference(startMonday).inDays ~/ 7;
+             if (weeksDiff % interval == 0) {
+               generated++;
+               if (generated >= count) return current;
+             }
+          }
+          current = current.add(const Duration(days: 1));
+          safety++;
         }
-        current = current.add(const Duration(days: 1));
-        safety++;
+        return current;
+      } else if (repeatType == 'monthly') {
+        int targetMonth = start.month + ((count - 1) * interval);
+        int targetYear = start.year + ((targetMonth - 1) ~/ 12);
+        int actualMonth = ((targetMonth - 1) % 12) + 1;
+        int daysInTargetMonth = DateTime(targetYear, actualMonth + 1, 0).day;
+        int clampedDay = start.day > daysInTargetMonth ? daysInTargetMonth : start.day;
+        return DateTime(targetYear, actualMonth, clampedDay, start.hour, start.minute);
+      } else if (repeatType == 'yearly') {
+        int targetYear = start.year + ((count - 1) * interval);
+        int daysInTargetMonth = DateTime(targetYear, start.month + 1, 0).day;
+        int clampedDay = start.day > daysInTargetMonth ? daysInTargetMonth : start.day;
+        return DateTime(targetYear, start.month, clampedDay, start.hour, start.minute);
       }
-      return current;
-    } else if (repeatType == 'monthly') {
-      int targetMonth = start.month + ((count - 1) * interval);
-      int targetYear = start.year + ((targetMonth - 1) ~/ 12);
-      int actualMonth = ((targetMonth - 1) % 12) + 1;
-      int daysInTargetMonth = DateTime(targetYear, actualMonth + 1, 0).day;
-      int clampedDay = start.day > daysInTargetMonth ? daysInTargetMonth : start.day;
-      return DateTime(targetYear, actualMonth, clampedDay, start.hour, start.minute);
-    } else if (repeatType == 'yearly') {
-      int targetYear = start.year + ((count - 1) * interval);
-      int daysInTargetMonth = DateTime(targetYear, start.month + 1, 0).day;
-      int clampedDay = start.day > daysInTargetMonth ? daysInTargetMonth : start.day;
-      return DateTime(targetYear, start.month, clampedDay, start.hour, start.minute);
+    } catch (e) {
+      return start;
     }
     return start;
   }
 
   void _notifyParent() {
+    if (_isInitializing || !mounted) return; // 👈 ป้องกัน Error ช่วงเริ่มหน้าจอ
+
     if (!_isCustomMode) {
       String rType = "none";
       int interval = 1;
@@ -287,6 +302,7 @@ class _RecurrenceSectionState extends State<RecurrenceSection> {
     for (int i = 0; i < _weeklyDays.length; i++) {
       if (_weeklyDays[i]) selectedDayNumbers.add(i + 1);
     }
+    
     if (_customUnitMap[_customRepeatUnit] == "weekly" && selectedDayNumbers.isEmpty) {
       selectedDayNumbers.add(widget.baseDate.weekday);
     }
@@ -300,7 +316,6 @@ class _RecurrenceSectionState extends State<RecurrenceSection> {
       finalCount = int.tryParse(_countController.text) ?? 1;
       if (finalCount < 1) finalCount = 1;
       
-      // 🟢 [อัปเดตแก้อาการปฏิทินพัง] บังคับสร้าง End Date ซ้อนเข้าไปด้วย เพื่อให้หน้า Calendar นำไปขีดเส้นขอบเขตได้
       finalEndDate = _calculateEndDateFromCount(
          widget.baseDate,
          _customUnitMap[_customRepeatUnit] ?? "daily",
@@ -352,7 +367,10 @@ class _RecurrenceSectionState extends State<RecurrenceSection> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
-        children: [SizedBox(width: 100, child: Text(label, style: GoogleFonts.inter(color: widget.labelColor, fontSize: 14))), Expanded(child: child)],
+        children: [
+          SizedBox(width: 100, child: Text(label, style: GoogleFonts.inter(color: widget.labelColor, fontSize: 14))), 
+          Expanded(child: child)
+        ],
       ),
     );
   }
@@ -361,14 +379,20 @@ class _RecurrenceSectionState extends State<RecurrenceSection> {
 
   Widget _buildMainDropdown() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10,vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: _selectedDropdown, isDense: true, isExpanded: true,
+          value: _selectedDropdown, 
+          isDense: true, 
+          isExpanded: true,
           items: _dropdownOptions.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13)))).toList(),
           onChanged: (val) {
-            setState(() { _selectedDropdown = val!; _isCustomMode = (_selectedDropdown == "กำหนดเอง..."); });
+            if (val == null) return;
+            setState(() { 
+              _selectedDropdown = val; 
+              _isCustomMode = (_selectedDropdown == "กำหนดเอง..."); 
+            });
             _notifyParent();
           },
         ),
@@ -389,8 +413,11 @@ class _RecurrenceSectionState extends State<RecurrenceSection> {
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
                   child: TextField(
-                    controller: _intervalController, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    decoration: const InputDecoration(border: InputBorder.none, isDense: true), style: const TextStyle(fontSize: 14),
+                    controller: _intervalController, 
+                    keyboardType: TextInputType.number, 
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(border: InputBorder.none, isDense: true), 
+                    style: const TextStyle(fontSize: 14),
                   ),
                 ),
               ),
@@ -403,7 +430,12 @@ class _RecurrenceSectionState extends State<RecurrenceSection> {
                     child: DropdownButton<String>(
                       value: _customRepeatUnit, isDense: true, isExpanded: true,
                       items: _customUnitMap.keys.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13)))).toList(),
-                      onChanged: (val) { setState(() => _customRepeatUnit = val!); _notifyParent(); },
+                      onChanged: (val) { 
+                        if (val != null) {
+                          setState(() => _customRepeatUnit = val); 
+                          _notifyParent(); 
+                        }
+                      },
                     ),
                   ),
                 ),
@@ -446,7 +478,12 @@ class _RecurrenceSectionState extends State<RecurrenceSection> {
         child: DropdownButton<String>(
           value: _endCondition, isDense: true, isExpanded: true,
           items: ["ไม่มีที่สิ้นสุด", "ระบุวันที่", "ระบุจำนวนครั้ง"].map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13)))).toList(),
-          onChanged: (val) { setState(() => _endCondition = val!); _notifyParent(); },
+          onChanged: (val) { 
+            if (val != null) {
+              setState(() => _endCondition = val); 
+              _notifyParent(); 
+            }
+          },
         ),
       ),
     );
@@ -456,10 +493,15 @@ class _RecurrenceSectionState extends State<RecurrenceSection> {
     return InkWell(
       onTap: () async {
         final date = await showDatePicker(
-          context: context, initialDate: _repeatEndDate ?? widget.baseDate.add(const Duration(days: 1)),
-          firstDate: widget.baseDate, lastDate: DateTime(2100),
+          context: context, 
+          initialDate: _repeatEndDate ?? widget.baseDate.add(const Duration(days: 1)),
+          firstDate: widget.baseDate, 
+          lastDate: DateTime(2100),
         );
-        if (date != null) { setState(() => _repeatEndDate = date); _notifyParent(); }
+        if (date != null) { 
+          setState(() => _repeatEndDate = date); 
+          _notifyParent(); 
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -477,8 +519,11 @@ class _RecurrenceSectionState extends State<RecurrenceSection> {
             padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
             child: TextField(
-              controller: _countController, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(border: InputBorder.none, isDense: true), style: const TextStyle(fontSize: 14),
+              controller: _countController, 
+              keyboardType: TextInputType.number, 
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(border: InputBorder.none, isDense: true), 
+              style: const TextStyle(fontSize: 14),
             ),
           ),
         ),

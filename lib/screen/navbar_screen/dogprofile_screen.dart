@@ -54,7 +54,7 @@ class _DogProfilePageState extends State<DogProfilePage> {
   late TextEditingController diseasesController;
   late TextEditingController weightController; 
   late TextEditingController birthDateController; 
-  late TextEditingController ageController; // 🟢 เพิ่ม Controller สำหรับอายุ
+  late TextEditingController ageController; 
 
   String gender = '';
   DateTime? birthDate;
@@ -68,7 +68,6 @@ class _DogProfilePageState extends State<DogProfilePage> {
     super.initState();
     initializeDateFormatting('th');
     
-    // 🟢 กำหนดค่า Controller ทั้งหมดก่อน เพื่อป้องกัน LateInitializationError
     nameController = TextEditingController();
     breedController = TextEditingController();
     microchipController = TextEditingController();
@@ -77,7 +76,6 @@ class _DogProfilePageState extends State<DogProfilePage> {
     birthDateController = TextEditingController(); 
     ageController = TextEditingController();
 
-    // 🟢 แล้วค่อยสั่งดึงข้อมูล
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncWithProvider();
     });
@@ -91,7 +89,7 @@ class _DogProfilePageState extends State<DogProfilePage> {
     diseasesController.dispose();
     weightController.dispose(); 
     birthDateController.dispose(); 
-    ageController.dispose(); // 🟢 อย่าลืม dispose
+    ageController.dispose(); 
     super.dispose();
   }
 
@@ -130,7 +128,7 @@ class _DogProfilePageState extends State<DogProfilePage> {
   }
 
   void _resetLocalFields() {
-    if (!mounted) return; // 🟢 ป้องกัน Error กรณี Widget ถูกทำลายไปแล้ว
+    if (!mounted) return; 
 
     final provider = Provider.of<CurrentDogProvider>(context, listen: false);
     nameController.text = provider.dogName;
@@ -151,7 +149,7 @@ class _DogProfilePageState extends State<DogProfilePage> {
     weightController.text = currentWeight != null ? currentWeight.toString() : '';
     
     birthDateController.text = _getFormattedBirthDate(); 
-    ageController.text = _getAge(); // 🟢 เซ็ตค่าอายุเริ่มต้นให้ Controller
+    ageController.text = _getAge(); 
 
     _newProfileImage = null;
     _newPedigreeFile = null;
@@ -206,7 +204,7 @@ class _DogProfilePageState extends State<DogProfilePage> {
       setState(() {
         birthDate = picked;
         birthDateController.text = _getFormattedBirthDate(); 
-        ageController.text = _getAge(); // 🟢 อัปเดตอายุทันทีเมื่อเลือกวันเกิด
+        ageController.text = _getAge(); 
       });
     }
   }
@@ -355,6 +353,105 @@ class _DogProfilePageState extends State<DogProfilePage> {
     });
   }
 
+ // 🔥 ฟังก์ชันสำหรับลบโปรไฟล์สุนัขแบบสมบูรณ์ (อัปเดต: ลบกิจกรรมด้วย)
+  Future<void> _deleteCompleteDogProfile(String dogId, String? photoUrl) async {
+    bool confirm = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text("ยืนยันการลบ", style: GoogleFonts.mitr(fontWeight: FontWeight.bold, color: Colors.red)),
+        content: Text("คุณต้องการลบโปรไฟล์สุนัขตัวนี้ใช่หรือไม่?\n\nข้อมูลทั้งหมดรวมถึง ประวัติกิจกรรม, รูปภาพ และคิวอาร์โค้ด จะถูกลบและไม่สามารถกู้คืนได้", style: GoogleFonts.mitr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text("ยกเลิก", style: GoogleFonts.mitr(color: Colors.grey.shade600)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text("ลบทิ้ง", style: GoogleFonts.mitr(color: Colors.white)),
+          ),
+        ],
+      ),
+    ) ?? false;
+
+    if (!confirm) return;
+
+    setState(() => isLoading = true);
+
+    try {
+      // 1. ลบรูปโปรไฟล์สุนัขใน Firebase Storage
+      if (photoUrl != null && photoUrl.startsWith('https://firebasestorage.googleapis.com/')) {
+        try {
+          await FirebaseStorage.instance.refFromURL(photoUrl).delete();
+        } catch (e) {
+          debugPrint("ลบรูปโปรไฟล์ไม่สำเร็จ: $e");
+        }
+      }
+
+      // 2. ลบรูป QR Code สุนัขใน Firebase Storage
+      try {
+        await FirebaseStorage.instance.ref().child('qr_codes/dog_$dogId.png').delete();
+      } catch (e) {
+        debugPrint("ไม่มีรูป QR ให้ลบ: $e");
+      }
+
+      // 🟢 3. ลบกิจกรรมทั้งหมดของสุนัขใน Collection 'dog_activities'
+      try {
+        final activitiesSnapshot = await FirebaseFirestore.instance
+            .collection('dog_activities')
+            .where('dog_id', isEqualTo: dogId)
+            .get();
+
+        for (var doc in activitiesSnapshot.docs) {
+          final data = doc.data();
+          
+          // ตรวจสอบและลบรูปภาพที่แนบมากับกิจกรรม (ถ้ามีใน array 'images')
+          if (data.containsKey('images') && data['images'] is List) {
+            List<dynamic> images = data['images'];
+            for (String imageUrl in images) {
+              if (imageUrl.startsWith('https://firebasestorage.googleapis.com/')) {
+                try {
+                  await FirebaseStorage.instance.refFromURL(imageUrl).delete();
+                } catch (e) {
+                  debugPrint("ลบรูปกิจกรรมไม่สำเร็จ: $e");
+                }
+              }
+            }
+          }
+          
+          // ลบ Document ของกิจกรรมนั้นทิ้ง
+          await doc.reference.delete();
+        }
+      } catch (e) {
+        debugPrint("เกิดข้อผิดพลาดในการลบกิจกรรม: $e");
+      }
+
+      // 4. ลบ Document ของสุนัขออกจาก Firestore (Collection 'dogs')
+      await FirebaseFirestore.instance.collection('dogs').doc(dogId).delete();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('ลบโปรไฟล์และกิจกรรมของสุนัขเรียบร้อยแล้ว'), backgroundColor: Colors.green)
+        );
+        // เด้งกลับไปที่หน้า DogListPage และล้าง Stack ย้อนหลัง
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const DogListPage()),
+          (route) => false,
+        );
+      }
+
+    } catch (e) {
+      setState(() => isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('เกิดข้อผิดพลาดในการลบ: $e'), backgroundColor: Colors.red)
+        );
+      }
+    }
+  }
+
   void _showWeightHistoryBottomSheet(String dogId) {
     showModalBottomSheet(
       context: context,
@@ -363,7 +460,6 @@ class _DogProfilePageState extends State<DogProfilePage> {
       ),
       builder: (context) {
         return Container(
-         
           height: MediaQuery.of(context).size.height * 0.5,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -458,22 +554,21 @@ class _DogProfilePageState extends State<DogProfilePage> {
             Column(
               children: [
                HomeTopBar(
-      showProfile: true,
-      onMenuTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const DogListPage()),
-        );
-      },
-  
-      onProfileTap: () {
-        // 🟢 เปลี่ยนเส้นทางไปหน้า User Profile
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const UserProfileScreen()),
-        );
-      },
-    ),
+                  showProfile: true,
+                  onMenuTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const DogListPage()),
+                    );
+                  },
+              
+                  onProfileTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const UserProfileScreen()),
+                    );
+                  },
+                ),
                 Expanded(
                   child: Consumer<CurrentDogProvider>(
                     builder: (context, provider, child) {
@@ -486,315 +581,350 @@ class _DogProfilePageState extends State<DogProfilePage> {
                       final currentWeight = provider.currentDogData?['weight'];
 
                       return SingleChildScrollView(
-                        child: Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.all(20),
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(15),
-                            border: Border.all(color: const Color(0xFFCBE4F0)),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.25),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ProfileHeader(
-                                dogName: provider.dogName,
-                                dogImage: provider.dogImage,
-                                localImage: _newProfileImage,
-                                isEditing: isEditing,
-                                onEditToggle: () {
-                                  _resetLocalFields();
-                                  setState(() => isEditing = true);
-                                },
-                                onPickImage: _pickProfileImage,
-                              ),
-                              Container(
-                                margin: const EdgeInsets.only(top: 20),
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(15),
-                                  border: Border.all(
-                                    color: const Color(0xFFCBE4F0),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.all(20),
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(15),
+                                border: Border.all(color: const Color(0xFFCBE4F0)),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.25),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 1),
                                   ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Center(
-                                      child: Text(
-                                        "ข้อมูลส่วนตัวสุนัข",
-                                        style: GoogleFonts.mitr(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black87,
-                                        ),
+                                ],
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ProfileHeader(
+                                    dogName: provider.dogName,
+                                    dogImage: provider.dogImage,
+                                    localImage: _newProfileImage,
+                                    isEditing: isEditing,
+                                    onEditToggle: () {
+                                      _resetLocalFields();
+                                      setState(() => isEditing = true);
+                                    },
+                                    onPickImage: _pickProfileImage,
+                                  ),
+                                  Container(
+                                    margin: const EdgeInsets.only(top: 20),
+                                    padding: const EdgeInsets.all(20),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(15),
+                                      border: Border.all(
+                                        color: const Color(0xFFCBE4F0),
                                       ),
                                     ),
-                                    const SizedBox(height: 16),
-                                    if (!isEditing) ...[
-                                      DogInfoRow(
-                                        label: "ชื่อ:",
-                                        value: provider.dogName,
-                                      ),
-                                      DogInfoRow(
-                                        label: "เพศ:",
-                                        value: provider.dogGender,
-                                      ),
-                                      DogInfoRow(
-                                        label: "สายพันธุ์:",
-                                        value: provider.dogBreed,
-                                      ),
-                                      DogInfoRow(
-                                        label: "วันเกิด:",
-                                        value: _getFormattedBirthDate(),
-                                      ),
-                                      DogInfoRow(
-                                        label: "อายุ:",
-                                        value: _getAge(),
-                                      ),
-
-                                      Column(
-                                        children: [
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 10.0,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Center(
+                                          child: Text(
+                                            "ข้อมูลส่วนตัวสุนัข",
+                                            style: GoogleFonts.mitr(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black87,
                                             ),
-                                            child: Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                SizedBox(
-                                                  width: 100,
-                                                  child: Text(
-                                                    "น้ำหนัก:",
-                                                    style: GoogleFonts.mitr(
-                                                      color: const Color(
-                                                        0xFF81AAB7,
-                                                      ),
-                                                      fontSize: 15,
-                                                    ),
-                                                  ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        if (!isEditing) ...[
+                                          DogInfoRow(
+                                            label: "ชื่อ:",
+                                            value: provider.dogName,
+                                          ),
+                                          DogInfoRow(
+                                            label: "เพศ:",
+                                            value: provider.dogGender,
+                                          ),
+                                          DogInfoRow(
+                                            label: "สายพันธุ์:",
+                                            value: provider.dogBreed,
+                                          ),
+                                          DogInfoRow(
+                                            label: "วันเกิด:",
+                                            value: _getFormattedBirthDate(),
+                                          ),
+                                          DogInfoRow(
+                                            label: "อายุ:",
+                                            value: _getAge(),
+                                          ),
+
+                                          Column(
+                                            children: [
+                                              Padding(
+                                                padding: const EdgeInsets.symmetric(
+                                                  vertical: 10.0,
                                                 ),
-                                                Expanded(
-                                                  child: Row(
-                                                    children: [
-                                                      Text(
-                                                        currentWeight != null
-                                                            ? "$currentWeight กก."
-                                                            : "ไม่ระบุ",
+                                                child: Row(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    SizedBox(
+                                                      width: 100,
+                                                      child: Text(
+                                                        "น้ำหนัก:",
                                                         style: GoogleFonts.mitr(
-                                                          color: Colors.black87,
+                                                          color: const Color(
+                                                            0xFF81AAB7,
+                                                          ),
                                                           fontSize: 15,
                                                         ),
                                                       ),
-                                                      const SizedBox(width: 10),
-                                                      GestureDetector(
-                                                        onTap: () =>
-                                                            _showWeightHistoryBottomSheet(
-                                                              provider
-                                                                  .currentDogId!,
+                                                    ),
+                                                    Expanded(
+                                                      child: Row(
+                                                        children: [
+                                                          Text(
+                                                            currentWeight != null
+                                                                ? "$currentWeight กก."
+                                                                : "ไม่ระบุ",
+                                                            style: GoogleFonts.mitr(
+                                                              color: Colors.black87,
+                                                              fontSize: 15,
                                                             ),
-                                                        child: const Icon(
-                                                          Icons.history,
-                                                          color: Colors.grey,
-                                                          size: 20,
-                                                        ),
+                                                          ),
+                                                          const SizedBox(width: 10),
+                                                          GestureDetector(
+                                                            onTap: () =>
+                                                                _showWeightHistoryBottomSheet(
+                                                                  provider
+                                                                      .currentDogId!,
+                                                                ),
+                                                            child: const Icon(
+                                                              Icons.history,
+                                                              color: Colors.grey,
+                                                              size: 20,
+                                                            ),
+                                                          ),
+                                                        ],
                                                       ),
-                                                    ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const Divider(
+                                                color: Color(0xFFEEEEEE),
+                                                height: 1,
+                                                thickness: 1,
+                                              ),
+                                            ],
+                                          ),
+
+                                          DogInfoRow(
+                                            label: "เลขไมโครชิพ:",
+                                            value: provider.dogMicrochip,
+                                          ),
+                                          DogInfoRow(
+                                            label: "ใบเพ็ดดีกรี:",
+                                            value: provider.dogPedigree.isNotEmpty
+                                                ? "ดูเอกสารแนบ"
+                                                : "-",
+                                            isLink: provider.dogPedigree.isNotEmpty,
+                                          ),
+                                          DogInfoRow(
+                                            label: "โรคประจำตัว:",
+                                            value: provider.dogDiseases,
+                                          ),
+                                        ] else ...[
+                                          EditDogInfoRow(
+                                            label: "ชื่อ:",
+                                            child: TextField(
+                                              controller: nameController,
+                                            ),
+                                          ),
+                                          EditDogInfoRow(
+                                            label: "เพศ:",
+                                            child: DropdownButton<String>(
+                                              value: gender.isEmpty
+                                                  ? 'เพศผู้'
+                                                  : gender,
+                                              isExpanded: true,
+                                              items: const [
+                                                DropdownMenuItem(
+                                                  value: 'เพศผู้',
+                                                  child: Text('เพศผู้'),
+                                                ),
+                                                DropdownMenuItem(
+                                                  value: 'เพศเมีย',
+                                                  child: Text('เพศเมีย'),
+                                                ),
+                                              ],
+                                              onChanged: (value) =>
+                                                  setState(() => gender = value!),
+                                            ),
+                                          ),
+                                          EditDogInfoRow(
+                                            label: "สายพันธุ์:",
+                                            child: TextField(
+                                              controller: breedController,
+                                            ),
+                                          ),
+                                          EditDogInfoRow(
+                                            label: "วันเกิด:",
+                                            child: GestureDetector(
+                                              onTap: _pickBirthDate,
+                                              child: AbsorbPointer(
+                                                child: TextField(
+                                                  controller: birthDateController, 
+                                                  decoration: const InputDecoration(
+                                                    suffixIcon: Icon(
+                                                      Icons.calendar_today,
+                                                    ),
                                                   ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          
+                                          EditDogInfoRow(
+                                            label: "อายุ:",
+                                            child: TextField(
+                                              controller: ageController,
+                                              readOnly: true, 
+                                              decoration: InputDecoration(
+                                                border: OutlineInputBorder(
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  borderSide: BorderSide.none,
+                                                ),
+                                                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                                                hintText: 'ระบบคำนวณให้อัตโนมัติ',
+                                                fillColor: Colors.grey.shade100,
+                                                filled: true,
+                                              ),
+                                            ),
+                                          ),
+
+                                          EditDogInfoRow(
+                                            label: "น้ำหนัก (กก.):",
+                                            child: TextField(
+                                              controller: weightController,
+                                              keyboardType:
+                                                  const TextInputType.numberWithOptions(
+                                                    decimal: true,
+                                                  ),
+                                              inputFormatters: [
+                                                FilteringTextInputFormatter.allow(
+                                                  RegExp(r'^\d*\.?\d*'),
+                                                ),
+                                              ],
+                                              decoration: const InputDecoration(
+                                                hintText: 'เช่น 15.5',
+                                              ),
+                                            ),
+                                          ),
+                                          EditDogInfoRow(
+                                            label: "เลขไมโครชิพ:",
+                                            child: TextField(
+                                              controller: microchipController,
+                                            ),
+                                          ),
+                                          EditDogInfoRow(
+                                            label: "ใบเพ็ดดีกรี:",
+                                            child: Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    _newPedigreeFileName ??
+                                                        (provider
+                                                                .dogPedigree
+                                                                .isNotEmpty
+                                                            ? "มีเอกสารเดิมแล้ว"
+                                                            : "ยังไม่มีเอกสาร"),
+                                                    style: TextStyle(
+                                                      color:
+                                                          _newPedigreeFile != null
+                                                          ? Colors.green
+                                                          : Colors.black54,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                ),
+                                                IconButton(
+                                                  onPressed: _pickPedigreeFile,
+                                                  icon: const Icon(
+                                                    Icons.upload_file,
+                                                    color: Color(0xFF75A4B2),
+                                                  ),
+                                                  tooltip: 'อัปโหลดเอกสาร',
                                                 ),
                                               ],
                                             ),
                                           ),
-                                          const Divider(
-                                            color: Color(0xFFEEEEEE),
-                                            height: 1,
-                                            thickness: 1,
-                                          ),
-                                        ],
-                                      ),
-
-                                      DogInfoRow(
-                                        label: "เลขไมโครชิพ:",
-                                        value: provider.dogMicrochip,
-                                      ),
-                                      DogInfoRow(
-                                        label: "ใบเพ็ดดีกรี:",
-                                        value: provider.dogPedigree.isNotEmpty
-                                            ? "ดูเอกสารแนบ"
-                                            : "-",
-                                        isLink: provider.dogPedigree.isNotEmpty,
-                                      ),
-                                      DogInfoRow(
-                                        label: "โรคประจำตัว:",
-                                        value: provider.dogDiseases,
-                                      ),
-                                    ] else ...[
-                                      EditDogInfoRow(
-                                        label: "ชื่อ:",
-                                        child: TextField(
-                                          controller: nameController,
-                                        ),
-                                      ),
-                                      EditDogInfoRow(
-                                        label: "เพศ:",
-                                        child: DropdownButton<String>(
-                                          value: gender.isEmpty
-                                              ? 'เพศผู้'
-                                              : gender,
-                                          isExpanded: true,
-                                          items: const [
-                                            DropdownMenuItem(
-                                              value: 'เพศผู้',
-                                              child: Text('เพศผู้'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'เพศเมีย',
-                                              child: Text('เพศเมีย'),
-                                            ),
-                                          ],
-                                          onChanged: (value) =>
-                                              setState(() => gender = value!),
-                                        ),
-                                      ),
-                                      EditDogInfoRow(
-                                        label: "สายพันธุ์:",
-                                        child: TextField(
-                                          controller: breedController,
-                                        ),
-                                      ),
-                                      EditDogInfoRow(
-                                        label: "วันเกิด:",
-                                        child: GestureDetector(
-                                          onTap: _pickBirthDate,
-                                          child: AbsorbPointer(
+                                          EditDogInfoRow(
+                                            label: "โรคประจำตัว:",
                                             child: TextField(
-                                              controller: birthDateController, 
-                                              decoration: const InputDecoration(
-                                                suffixIcon: Icon(
-                                                  Icons.calendar_today,
+                                              controller: diseasesController,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 20),
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceEvenly,
+                                            children: [
+                                              OutlinedButton(
+                                                onPressed: _cancelEditing,
+                                                child: const Text('ยกเลิก'),
+                                              ),
+                                              ElevatedButton(
+                                                onPressed: _saveChanges,
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor:
+                                                      Colors.yellow[200],
                                                 ),
+                                                child: const Text('บันทึก ✓'),
                                               ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      
-                                      // 🟢 แก้ไขช่องอายุให้ใช้ Controller แบบอ่านอย่างเดียว
-                                      EditDogInfoRow(
-                                        label: "อายุ:",
-                                        child: TextField(
-                                          controller: ageController,
-                                          readOnly: true, 
-                                          decoration: InputDecoration(
-                                            border: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(8),
-                                              borderSide: BorderSide.none,
-                                            ),
-                                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                                            hintText: 'ระบบคำนวณให้อัตโนมัติ',
-                                            fillColor: Colors.grey.shade100,
-                                            filled: true,
-                                          ),
-                                        ),
-                                      ),
-
-                                      EditDogInfoRow(
-                                        label: "น้ำหนัก (กก.):",
-                                        child: TextField(
-                                          controller: weightController,
-                                          keyboardType:
-                                              const TextInputType.numberWithOptions(
-                                                decimal: true,
-                                              ),
-                                          inputFormatters: [
-                                            FilteringTextInputFormatter.allow(
-                                              RegExp(r'^\d*\.?\d*'),
-                                            ),
-                                          ],
-                                          decoration: const InputDecoration(
-                                            hintText: 'เช่น 15.5',
-                                          ),
-                                        ),
-                                      ),
-                                      EditDogInfoRow(
-                                        label: "เลขไมโครชิพ:",
-                                        child: TextField(
-                                          controller: microchipController,
-                                        ),
-                                      ),
-                                      EditDogInfoRow(
-                                        label: "ใบเพ็ดดีกรี:",
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                _newPedigreeFileName ??
-                                                    (provider
-                                                            .dogPedigree
-                                                            .isNotEmpty
-                                                        ? "มีเอกสารเดิมแล้ว"
-                                                        : "ยังไม่มีเอกสาร"),
-                                                style: TextStyle(
-                                                  color:
-                                                      _newPedigreeFile != null
-                                                      ? Colors.green
-                                                      : Colors.black54,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ),
-                                            IconButton(
-                                              onPressed: _pickPedigreeFile,
-                                              icon: const Icon(
-                                                Icons.upload_file,
-                                                color: Color(0xFF75A4B2),
-                                              ),
-                                              tooltip: 'อัปโหลดเอกสาร',
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      EditDogInfoRow(
-                                        label: "โรคประจำตัว:",
-                                        child: TextField(
-                                          controller: diseasesController,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 20),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceEvenly,
-                                        children: [
-                                          OutlinedButton(
-                                            onPressed: _cancelEditing,
-                                            child: const Text('ยกเลิก'),
-                                          ),
-                                          ElevatedButton(
-                                            onPressed: _saveChanges,
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor:
-                                                  Colors.yellow[200],
-                                            ),
-                                            child: const Text('บันทึก ✓'),
+                                            ],
                                           ),
                                         ],
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            
+                            // 🔥 เพิ่มปุ่มลบสุนัขตรงนี้ (แสดงเฉพาะตอนที่ไม่ได้อยู่ในโหมดแก้ไข)
+                            if (!isEditing) ...[
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: TextButton.icon(
+                                    onPressed: () {
+                                      _deleteCompleteDogProfile(provider.currentDogId!, provider.dogImage);
+                                    },
+                                    icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                                    label: Text(
+                                      "ลบโปรไฟล์สุนัขตัวนี้",
+                                      style: GoogleFonts.mitr(
+                                        color: Colors.redAccent,
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 16,
                                       ),
-                                    ],
-                                  ],
+                                    ),
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 15),
+                                      backgroundColor: Colors.red.shade50,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(15),
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
+                              const SizedBox(height: 30),
                             ],
-                          ),
+                          ],
                         ),
                       );
                     },
@@ -802,6 +932,15 @@ class _DogProfilePageState extends State<DogProfilePage> {
                 ),
               ],
             ),
+            
+            // 🔥 แสดง Loading Overlay ตอนกำลังเซฟหรือลบข้อมูล
+            if (isLoading)
+              Container(
+                color: Colors.black.withOpacity(0.3),
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
           ],
         ),
       ),

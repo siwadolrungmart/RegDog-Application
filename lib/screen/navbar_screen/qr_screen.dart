@@ -1,9 +1,9 @@
 import 'dart:ui' as ui;
 import 'dart:typed_data';
-import 'dart:io'; // เพิ่มสำหรับ File
-import 'package:http/http.dart' as http; // เพิ่มสำหรับโหลดรูป
-import 'package:gal/gal.dart'; // เพิ่มสำหรับบันทึกรูป
-import 'package:path_provider/path_provider.dart'; // เพิ่มสำหรับ Temporary Path
+import 'dart:io'; 
+import 'package:http/http.dart' as http; 
+import 'package:gal/gal.dart'; 
+import 'package:path_provider/path_provider.dart'; 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; 
 import 'package:google_fonts/google_fonts.dart';
@@ -64,7 +64,6 @@ class _QrCodePageState extends State<QrCodePage> {
         if (!['ไม่ระบุ', 'ปกติ', 'หาย'].contains(status)) status = 'ไม่ระบุ';
         _dogStatus = status;
         
-        // 🟢 ดึง Token ล่าสุดจาก Database มาสร้างลิงก์ (Security System)
         String currentToken = provider.qrTrackingData?['activeQrToken'] ?? '';
         _qrDataLink = _dbService.generateQrWebLink(provider.currentDogId ?? '', currentToken);
         _hasData = true; 
@@ -171,6 +170,83 @@ class _QrCodePageState extends State<QrCodePage> {
     });
   }
 
+  // 🔥 ฟังก์ชันใหม่: สำหรับลบคิวอาร์โค้ด
+  Future<void> _deleteQrCode() async {
+    // 1. แสดง Popup ยืนยันก่อนลบ
+    bool confirm = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text("ยืนยันการลบ", style: GoogleFonts.mitr(fontWeight: FontWeight.bold, color: Colors.red)),
+        content: Text("คุณต้องการลบคิวอาร์โค้ดประจำตัวสุนัขหรือไม่?", style: GoogleFonts.mitr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text("ยกเลิก", style: GoogleFonts.mitr(color: Colors.grey.shade600)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text("ลบข้อมูล", style: GoogleFonts.mitr(color: Colors.white)),
+          ),
+        ],
+      ),
+    ) ?? false;
+
+    if (!confirm) return;
+
+    final provider = Provider.of<CurrentDogProvider>(context, listen: false);
+    final String dogId = provider.currentDogId ?? '';
+
+    if (dogId.isEmpty) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      // 2. ลบรูป QR Code ออกจาก Storage
+      try {
+        await FirebaseStorage.instance.ref().child('qr_codes/dog_$dogId.png').delete();
+      } catch (e) {
+        debugPrint("No QR image found to delete: $e");
+      }
+
+      // 3. 🟢 ลบฟิลด์ที่เกี่ยวข้องกับ QR Code ทั้งหมดออกจาก Collection 'dogs'
+      await FirebaseFirestore.instance.collection('dogs').doc(dogId).update({
+        'qrImageUrl': FieldValue.delete(),
+        'activeQrToken': FieldValue.delete(),
+        'currentStatus': FieldValue.delete(),
+        'isQrActive': FieldValue.delete(),
+        'qrCodeId': FieldValue.delete(),
+        'qrTrackingData': FieldValue.delete(),
+      });
+
+      // 4. โหลดข้อมูลเข้า Provider ใหม่
+      await provider.selectDogById(dogId);
+
+      // 5. รีเซ็ตสถานะหน้าจอให้กลับไปหน้าสร้าง QR
+      setState(() {
+        _hasData = false;
+        _qrDataLink = "";
+        _isLoading = false;
+        // เคลียร์ฟอร์มให้ว่าง
+        _ownerNameController.clear();
+        _phoneController.clear();
+        _addressController.clear();
+        _noteController.clear();
+        _dogStatus = 'ไม่ระบุ';
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ลบคิวอาร์โค้ดเรียบร้อยแล้ว'), backgroundColor: Colors.green));
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('เกิดข้อผิดพลาดในการลบ: $e'), backgroundColor: Colors.red));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<CurrentDogProvider>(context);
@@ -228,6 +304,7 @@ class _QrCodePageState extends State<QrCodePage> {
                                 qrLink: _qrDataLink,
                                 qrImageUrl: qrImageUrl,
                                 onEdit: () => setState(() => _hasData = false), 
+                                onDelete: _deleteQrCode, // 🟢 ส่งฟังก์ชันลบไปที่ UI
                               )
                             : _buildFormState(dogData),
                       );
@@ -295,16 +372,22 @@ class _QrCodePageState extends State<QrCodePage> {
 }
 
 // ==========================================
-// ส่วน UI: หน้าแสดง QR Code (แก้ไขฟังก์ชันบันทึกและปุ่ม)
+// ส่วน UI: หน้าแสดง QR Code (มีปุ่มลบ และ บันทึก)
 // ==========================================
 class QrDisplayState extends StatelessWidget {
   final String qrLink;
   final String? qrImageUrl; 
   final VoidCallback onEdit;
+  final VoidCallback onDelete; // 🟢 รับฟังก์ชันลบ
 
-  const QrDisplayState({super.key, required this.qrLink, this.qrImageUrl, required this.onEdit});
+  const QrDisplayState({
+    super.key, 
+    required this.qrLink, 
+    this.qrImageUrl, 
+    required this.onEdit,
+    required this.onDelete,
+  });
 
-  // 🔥 ฟังก์ชันใหม่: บันทึกรูปภาพลง Gallery
   Future<void> _saveQrToGallery(BuildContext context) async {
     if (qrImageUrl == null || qrImageUrl!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ไม่พบรูปภาพคิวอาร์โค้ด")));
@@ -312,18 +395,14 @@ class QrDisplayState extends StatelessWidget {
     }
 
     try {
-      // 1. ขอ Permission (Gal จะจัดการให้อัตโนมัติในเวอร์ชันใหม่)
-      // 2. ดาวน์โหลด Byte Data จาก Firebase Storage
       final response = await http.get(Uri.parse(qrImageUrl!));
       final Uint8List bytes = response.bodyBytes;
 
-      // 3. สร้างไฟล์ชั่วคราว
       final tempDir = await getTemporaryDirectory();
       final path = '${tempDir.path}/qr_download.png';
       final file = File(path);
       await file.writeAsBytes(bytes);
 
-      // 4. บันทึกลง Gallery
       await Gal.putImage(path);
 
       if (context.mounted) {
@@ -373,14 +452,30 @@ class QrDisplayState extends StatelessWidget {
         Text("ผู้ที่สแกนคิวอาร์โค้ดนี้\nจะเห็นข้อมูลติดต่อที่คุณระบุไว้", textAlign: TextAlign.center, style: GoogleFonts.mitr(color: Colors.grey.shade600, fontSize: 14)),
         const SizedBox(height: 40),
         
-        // 🟢 ปรับเหลือแค่ปุ่มบันทึก และทำให้กดได้ชัดเจน
-        Center(
-          child: _buildIconAction(Icons.download_for_offline, "บันทึกลงเครื่อง", () => _saveQrToGallery(context)),
+        // 🟢 เปลี่ยนจากปุ่มเดียว เป็น Row เพื่อแสดง 2 ปุ่ม (ลบ / บันทึก)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildIconAction(
+              icon: Icons.delete_forever, 
+              label: "ลบคิวอาร์โค้ด", 
+              onTap: onDelete,
+              bgColor: const Color(0xFFFFCDD2), // สีแดงอ่อน
+              iconColor: Colors.red.shade700,
+            ),
+            const SizedBox(width: 40), // ระยะห่างระหว่างปุ่ม
+            _buildIconAction(
+              icon: Icons.download_for_offline, 
+              label: "บันทึกลงเครื่อง", 
+              onTap: () => _saveQrToGallery(context),
+              bgColor: const Color(0xFFCBE4F0), // สีฟ้าอ่อน
+              iconColor: const Color(0xFF4A7A8C),
+            ),
+          ],
         ),
         
         const SizedBox(height: 50),
         
-        // 🟢 ปรับปุ่มแก้ไขให้ยาวเต็มสัดส่วน (double.infinity)
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
@@ -400,15 +495,22 @@ class QrDisplayState extends StatelessWidget {
     );
   }
 
-  Widget _buildIconAction(IconData icon, String label, VoidCallback onTap) {
+  // 🟢 อัปเดต Widget ปุ่มไอคอนให้รับค่าสีได้
+  Widget _buildIconAction({
+    required IconData icon, 
+    required String label, 
+    required VoidCallback onTap, 
+    required Color bgColor, 
+    required Color iconColor
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(color: const Color(0xFFCBE4F0), shape: BoxShape.circle),
-            child: Icon(icon, size: 32, color: const Color(0xFF4A7A8C)),
+            decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
+            child: Icon(icon, size: 32, color: iconColor),
           ),
           const SizedBox(height: 8),
           Text(label, style: GoogleFonts.mitr(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black87)),
