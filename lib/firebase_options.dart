@@ -64,6 +64,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1005419115490',
     projectId: 'senior-project-regdog',
     storageBucket: 'senior-project-regdog.firebasestorage.app',
+    androidClientId: '1005419115490-6go39g3ecjo7b1biviljmu5c8gvc7om5.apps.googleusercontent.com',
+    iosClientId: '1005419115490-dgqlalqid6bct5e0mip0q18ga6a6libr.apps.googleusercontent.com',
     iosBundleId: 'com.example.regdogapp',
   );
 
@@ -73,6 +75,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1005419115490',
     projectId: 'senior-project-regdog',
     storageBucket: 'senior-project-regdog.firebasestorage.app',
+    androidClientId: '1005419115490-6go39g3ecjo7b1biviljmu5c8gvc7om5.apps.googleusercontent.com',
+    iosClientId: '1005419115490-dgqlalqid6bct5e0mip0q18ga6a6libr.apps.googleusercontent.com',
     iosBundleId: 'com.example.regdogapp',
   );
 
@@ -85,4 +89,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'senior-project-regdog.firebasestorage.app',
     measurementId: 'G-DY6FCS6BKJ',
   );
+
 }

@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // เพิ่ม Import
+import 'package:google_sign_in/google_sign_in.dart'; // เพิ่ม Import
+import 'package:cloud_firestore/cloud_firestore.dart'; // เพิ่ม Import
+
 // ต้อง import ไฟล์หน้าสร้างบัญชีเพื่อให้เรียกใช้ class ได้
-import 'package:regdogapp/screen/create_account_screen.dart'; 
+import 'package:regdogapp/screen/create_account_screen.dart';
+import 'package:regdogapp/screen/dog_list.dart';
+import 'package:regdogapp/screen/register_screen/registerdogname.dart';
+import 'package:regdogapp/screen/register_screen/registergender.dart';
+// นำเข้าไฟล์หน้าเลือกสถานะสุนัข (ตรวจสอบ path ให้ตรงกับโปรเจกต์ของคุณ)
+import 'package:regdogapp/screen/register_screen/registerhavedog.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,29 +21,134 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isLoading = false; // เพิ่มสถานะการโหลด
+
+  // -----------------------------------------------------
+  // 1. ฟังก์ชันเข้าสู่ระบบด้วย อีเมล และ รหัสผ่าน
+  // -----------------------------------------------------
+  Future<void> _signInWithEmail() async {
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("กรุณากรอกอีเมลและรหัสผ่าน")),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+     // ถ้าล็อกอินสำเร็จ ให้ดึง uid และตรวจสอบสุนัข
+      final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      
+      if (userCredential.user != null) {
+        await _checkDogAndNavigate(userCredential.user!.uid);
+      }
+    } on FirebaseAuthException catch (e) {
+      String message = "เกิดข้อผิดพลาด";
+      if (e.code == 'user-not-found' ||
+          e.code == 'wrong-password' ||
+          e.code == 'invalid-credential') {
+        message = "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // -----------------------------------------------------
+  // 2. ฟังก์ชันเข้าสู่ระบบด้วย Google (สำหรับ v7.0.0+)
+  // -----------------------------------------------------
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      // 1. ดึง instance แบบใหม่ และทำการ initialize ก่อนใช้งานเสมอ
+      final googleSignIn = GoogleSignIn.instance;
+      await googleSignIn.initialize();
+
+      // 2. ใช้คำสั่ง authenticate() แทนคำสั่ง signIn() เดิม
+      final GoogleSignInAccount? googleUser = await googleSignIn.authenticate();
+
+      // ถ้าผู้ใช้กดยกเลิกการล็อกอิน
+      if (googleUser == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // 3. ดึงข้อมูล Auth (ในเวอร์ชันใหม่ไม่ต้องใช้คำว่า await ตรงนี้แล้ว)
+      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+
+      // 4. สร้าง Credential สำหรับ Firebase (เวอร์ชันใหม่ใช้แค่ idToken)
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        idToken: googleAuth.idToken,
+      );
+
+      // 5. เข้าสู่ระบบ Firebase ด้วย Credential ที่ได้
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithCredential(credential);
+      final User? user = userCredential.user;
+
+      if (user != null) {
+        // ตรวจสอบว่าผู้ใช้นี้เคยมีข้อมูลใน Firestore (users collection) หรือยัง
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (!userDoc.exists) {
+          // ถ้าเป็นผู้ใช้ใหม่ (ล็อกอิน Google ครั้งแรก) ให้บันทึกข้อมูลตั้งต้นลงฐานข้อมูล
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .set({
+                "uid": user.uid,
+                "email": user.email ?? "",
+                "displayName": user.displayName ?? "ผู้ใช้ Google",
+                "profileImageUrl": user.photoURL ?? "",
+                "fcmToken": "",
+                "createdAt": FieldValue.serverTimestamp(),
+                "updatedAt": FieldValue.serverTimestamp(),
+              });
+        }
+
+       // พาไปหน้าถัดไปโดยผ่านฟังก์ชันตรวจสอบสุนัข
+        await _checkDogAndNavigate(user.uid);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('เข้าสู่ระบบด้วย Google ไม่สำเร็จ: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
+      body: SizedBox(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            // ปรับ path ให้ตรงกับโฟลเดอร์ assets/images/
-            image: AssetImage('assets/bg_watercolor.png'), 
-            fit: BoxFit.cover,
-          ),
-        ),
         child: SafeArea(
           child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20.0,
+              ), // จัด Padding ให้อ่านง่าย
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 30),
-                  
+                  const SizedBox(height: 20),
                   // --- 1. ส่วนรูปสุนัข (Image Card) ---
                   Center(
                     child: Container(
@@ -54,8 +168,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           alignment: Alignment.bottomCenter,
                           children: [
                             Image.asset(
-                              'assets/dog.png', // ปรับ path รูปสุนัข
-                              height: 280,
+                              'assets/dog.png',
+                              height: 300,
                               width: double.infinity,
                               fit: BoxFit.cover,
                             ),
@@ -64,31 +178,48 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  CircleAvatar(radius: 4, backgroundColor: Colors.black87),
+                                  CircleAvatar(
+                                    radius: 4,
+                                    backgroundColor: Colors.black87,
+                                  ),
                                   SizedBox(width: 6),
-                                  CircleAvatar(radius: 4, backgroundColor: Colors.black26),
+                                  CircleAvatar(
+                                    radius: 4,
+                                    backgroundColor: Colors.black26,
+                                  ),
                                   SizedBox(width: 6),
-                                  CircleAvatar(radius: 4, backgroundColor: Colors.black26),
+                                  CircleAvatar(
+                                    radius: 4,
+                                    backgroundColor: Colors.black26,
+                                  ),
                                 ],
                               ),
-                            )
+                            ),
                           ],
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 35),
+                  const SizedBox(height: 20),
 
                   // --- 2. ส่วนหัวข้อ (Headers) ---
                   const Text(
                     "ยินดีต้อนรับสู่ RegDog",
-                    style: TextStyle(fontSize: 18, color: Colors.black54),
+                    style: TextStyle(
+                      fontSize: 24,
+                      color: Colors.black,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   const Text(
                     "เข้าสู่บัญชีของคุณ",
-                    style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.5,
+                    ),
                   ),
-                  const SizedBox(height: 25),
+                  const SizedBox(height: 15),
 
                   // --- 3. ช่องกรอกข้อมูล ---
                   _buildTextField(
@@ -96,39 +227,71 @@ class _LoginScreenState extends State<LoginScreen> {
                     hint: "อีเมล",
                     icon: Icons.email_outlined,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   _buildTextField(
                     controller: _passwordController,
                     hint: "รหัสผ่าน",
                     icon: Icons.lock_outline,
                     isPassword: true,
                   ),
-
+                  const SizedBox(height: 5),
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
-                      onPressed: () => print("Forgot Password"),
-                      child: const Text("ลืมรหัสผ่าน?", style: TextStyle(color: Colors.black45)),
+                      onPressed:
+                          _showForgotPasswordDialog, // <-- เปลี่ยนเป็นเรียกใช้ฟังก์ชันนี้
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text(
+                        "ลืมรหัสผ่าน?",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.black45,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 10),
 
-                  // --- 4. ปุ่มเข้าสู่ระบบ ---
+                  // --- 4. ปุ่มเข้าสู่ระบบด้วยอีเมล ---
                   SizedBox(
                     width: double.infinity,
-                    height: 58,
+                    height: 55,
                     child: ElevatedButton(
-                      onPressed: () => print("Login pressed"),
+                      onPressed: _isLoading
+                          ? null
+                          : _signInWithEmail, // เรียกใช้งาน
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFEF0B3),
                         foregroundColor: Colors.black87,
                         elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
                       ),
-                      child: const Text("เข้าสู่ระบบ", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.black,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              "เข้าสู่ระบบ",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   ),
-                  
+
                   // --- 5. ตัวคั่น OR ---
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 20),
@@ -137,7 +300,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         Expanded(child: Divider(color: Colors.black12)),
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 10),
-                          child: Text("or", style: TextStyle(color: Colors.black38)),
+                          child: Text(
+                            "or",
+                            style: TextStyle(color: Colors.black38),
+                          ),
                         ),
                         Expanded(child: Divider(color: Colors.black12)),
                       ],
@@ -147,30 +313,46 @@ class _LoginScreenState extends State<LoginScreen> {
                   // --- 6. ปุ่ม Google Login ---
                   SizedBox(
                     width: double.infinity,
-                    height: 58,
+                    height: 45,
                     child: OutlinedButton.icon(
-                      onPressed: () => print("Google Login"),
+                      onPressed: _isLoading
+                          ? null
+                          : _signInWithGoogle, // เรียกใช้งาน Google Login
                       icon: Image.network(
                         'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1200px-Google_%22G%22_logo.svg.png',
                         height: 22,
                       ),
-                      label: const Text("Google", style: TextStyle(color: Colors.black87, fontSize: 16)),
+                      label: const Text(
+                        "Google",
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Colors.black12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 25),
+                  const SizedBox(height: 15),
 
-                  // --- 7. Footer สร้างบัญชีใหม่ (จุดที่แก้ไข) ---
+                  // --- 7. Footer สร้างบัญชีใหม่ ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text("คุณยังไม่มีบัญชีใช่ไหม?", style: TextStyle(color: Colors.black45)),
-                      TextButton(
-                        onPressed: () {
-                          // ใช้ Navigator เพื่อเปลี่ยนหน้าไปยัง CreateAccountScreen
+                      const Text(
+                        "คุณยังไม่มีบัญชีใช่ไหม? ",
+                        style: TextStyle(
+                          color: Colors.black45,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -179,19 +361,186 @@ class _LoginScreenState extends State<LoginScreen> {
                           );
                         },
                         child: const Text(
-                          "สร้างบัญชีใหม่", 
-                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+                          "สร้างบัญชีใหม่",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 30),
                 ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+// -----------------------------------------------------
+  // ฟังก์ชันตรวจสอบข้อมูลสุนัข และนำทางไปยังหน้าถัดไป
+  // -----------------------------------------------------
+  Future<void> _checkDogAndNavigate(String uid) async {
+    try {
+      // ค้นหาใน Firestore ว่ามีสุนัขที่เป็นของ uid นี้หรือไม่
+      // สมมติว่าคุณเก็บข้อมูลสุนัขไว้ใน collection 'dogs' และใช้ field 'ownerId' หรือ 'userId' เก็บ uid ของเจ้าของ
+      // *หมายเหตุ: ถ้าคุณเก็บเป็น Sub-collection ให้เปลี่ยนเป็น .collection('users').doc(uid).collection('dogs')
+      final dogSnapshot = await FirebaseFirestore.instance
+          .collection('dogs') // เปลี่ยนชื่อ collection เป็นของคุณ
+          .where('ownerId', isEqualTo: uid) // เปลี่ยนชื่อ field 'ownerId' ให้ตรงกับที่คุณใช้ใน Firestore
+          .limit(1) // ขอแค่ 1 ตัวก็พอเพื่อความรวดเร็วในการเช็ค
+          .get();
+
+      if (mounted) {
+        if (dogSnapshot.docs.isEmpty) {
+          // ถ้าไม่มีข้อมูลสุนัขเลย -> ไปหน้าลงทะเบียนสุนัข
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const Registerdogname()),
+          );
+        } else {
+          // ถ้ามีสุนัขอย่างน้อย 1 ตัว -> ไปหน้า DogListPage
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const DogListPage()), // เปลี่ยนชื่อ Class ให้ตรงกับของคุณ
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('เกิดข้อผิดพลาดในการตรวจสอบข้อมูล: $e')),
+        );
+      }
+    }
+  }
+  // -----------------------------------------------------
+  // ฟังก์ชันแสดง Popup สำหรับลืมรหัสผ่าน
+  // -----------------------------------------------------
+  Future<void> _showForgotPasswordDialog() async {
+    final _resetEmailController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: Colors.white,
+          title: const Text(
+            "รีเซ็ตรหัสผ่าน",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "กรุณากรอกอีเมลของคุณ ระบบจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ไปให้ทางอีเมล",
+                style: TextStyle(fontSize: 14, color: Colors.black87),
+              ),
+              const SizedBox(height: 15),
+              TextField(
+                controller: _resetEmailController,
+                keyboardType: TextInputType.emailAddress,
+                style: const TextStyle(fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: "อีเมล",
+                  hintStyle: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black38,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.email_outlined,
+                    color: Colors.black26,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: const BorderSide(color: Colors.black12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: const BorderSide(
+                      color: Color(0xFFFEF0B3),
+                      width: 2,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context), // ปิดหน้าต่าง
+              child: const Text(
+                "ยกเลิก",
+                style: TextStyle(
+                  color: Colors.black54,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final email = _resetEmailController.text.trim();
+
+                // ตรวจสอบว่าไม่ได้ปล่อยช่องว่างไว้
+                if (email.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("กรุณากรอกอีเมลของคุณ")),
+                  );
+                  return;
+                }
+
+                try {
+                  // คำสั่งของ Firebase ในการส่งอีเมลรีเซ็ตรหัสผ่าน
+                  await FirebaseAuth.instance.sendPasswordResetEmail(
+                    email: email,
+                  );
+
+                  if (context.mounted) {
+                    Navigator.pop(context); // ปิด Dialog
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("ระบบได้ส่งลิงก์ไปที่อีเมลของคุณแล้ว"),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                } on FirebaseAuthException catch (e) {
+                  String message = "เกิดข้อผิดพลาด โปรดลองอีกครั้ง";
+                  if (e.code == 'user-not-found') {
+                    message = "ไม่พบบัญชีที่ใช้อีเมลนี้ในระบบ";
+                  } else if (e.code == 'invalid-email') {
+                    message = "รูปแบบอีเมลไม่ถูกต้อง";
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(message),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFEF0B3),
+                foregroundColor: Colors.black87,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+              ),
+              child: const Text(
+                "ส่งลิงก์",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -202,6 +551,8 @@ class _LoginScreenState extends State<LoginScreen> {
     bool isPassword = false,
   }) {
     return Container(
+      width: double.infinity,
+      height: 45,
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.9),
         borderRadius: BorderRadius.circular(15),
@@ -209,9 +560,15 @@ class _LoginScreenState extends State<LoginScreen> {
       child: TextField(
         controller: controller,
         obscureText: isPassword,
+        style: const TextStyle(fontSize: 14),
+        textAlignVertical: TextAlignVertical.center,
         decoration: InputDecoration(
           hintText: hint,
-          prefixIcon: Icon(icon, color: Colors.black26),
+          hintStyle: const TextStyle(fontSize: 14, color: Colors.black38),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.only(left: 12, right: 0),
+            child: Icon(icon, color: Colors.black26, size: 22),
+          ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(15),
             borderSide: const BorderSide(color: Colors.black12),
@@ -220,7 +577,7 @@ class _LoginScreenState extends State<LoginScreen> {
             borderRadius: BorderRadius.circular(15),
             borderSide: const BorderSide(color: Color(0xFFFEF0B3), width: 2),
           ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 18),
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
         ),
       ),
     );

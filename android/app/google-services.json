@@ -12,7 +12,20 @@
           "package_name": "com.example.regdogapp"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1005419115490-6go39g3ecjo7b1biviljmu5c8gvc7om5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.regdogapp",
+            "certificate_hash": "93765ebe4ae6ad0c4b5a469fc41a4f9e38154095"
+          }
+        },
+        {
+          "client_id": "1005419115490-f8n2dnokja42omkev0t2orgergb5b35t.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAhHy1WsEKWSEh8jW4NSoSuht7Ytfc9JQU"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1005419115490-f8n2dnokja42omkev0t2orgergb5b35t.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1005419115490-dgqlalqid6bct5e0mip0q18ga6a6libr.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.regdogapp"
+              }
+            }
+          ]
         }
       }
     }
