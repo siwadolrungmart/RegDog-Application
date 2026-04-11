@@ -12,7 +12,7 @@ import 'package:regdogapp/component/upperbar.dart';
 import 'package:regdogapp/screen/dog_list.dart';
 import 'package:regdogapp/screen/navbar_screen/calendar_screen.dart';
 import 'package:regdogapp/screen/register_screen/profile_user_screen.dart';
-import 'package:regdogapp/service/notification_service.dart'; // อาจจะเก็บไว้ใช้ตอนลบ event
+import 'package:regdogapp/service/notification_service.dart'; 
 import 'package:regdogapp/providers/current_dog_provider.dart';
 
 class AddExpenseEventPage extends StatefulWidget {
@@ -124,91 +124,102 @@ class _AddExpenseEventPageState extends State<AddExpenseEventPage> {
     const Color textLabelBlue = Color(0xFF6A97A8);
     const Color yellowBtn = Color(0xFFFFEFA6);
 
-    return Scaffold(
-      bottomNavigationBar: _buildStickyBottomBar(yellowBtn),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-             HomeTopBar(
-      showProfile: true,
-      onMenuTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const DogListPage()),
-        );
+    // 🟢 ครอบด้วย GestureDetector เพื่อซ่อนคีย์บอร์ดเมื่อแตะพื้นที่ว่าง
+    return GestureDetector(
+      onTap: () {
+        FocusManager.instance.primaryFocus?.unfocus();
       },
-  
-      onProfileTap: () {
-        // 🟢 เปลี่ยนเส้นทางไปหน้า User Profile
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const UserProfileScreen()),
-        );
-      },
-    ),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Column(
-                  children: [
-                    _buildHeader(context),
-                    const SizedBox(height: 15),
-                    _buildActivityImages(bgBlue, primaryBlue),
-                    const SizedBox(height: 15),
-                    Container(
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: primaryBlue.withOpacity(0.5)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildFormRow(
-                            "ชื่อ:",
-                            _buildInputBox(_nameController, "ชื่อค่าใช้จ่าย", TextInputType.text),
-                            textLabelBlue,
-                          ),
-                          _buildDivider(),
-                          _buildFormRow(
-                            "วัน:",
-                            _buildPlainText(_getThaiDate(widget.selectedDateFromCalendar)),
-                            textLabelBlue,
-                          ),
-                          _buildDivider(),
-                          _buildFormRow(
-                            "เวลา:",
-                            _buildTimePicker(context),
-                            textLabelBlue,
-                          ),
-                          _buildDivider(),
-                          _buildFormRow(
-                            "จำนวนเงิน:",
-                            _buildNumberInputBox(_costController, "0.00"), 
-                            textLabelBlue,
-                          ),
-                          _buildDivider(),
-                          _buildFormRow(
-                            "โน้ต:",
-                            _buildInputBox(_noteController, "โน๊ตเพิ่มเติม...", TextInputType.multiline),
-                            textLabelBlue,
-                          ),
-                          // 🟢 นำส่วนแจ้งเตือนและการทำซ้ำออกไปแล้ว
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-                  ],
-                ),
+      child: Scaffold(
+        bottomNavigationBar: _buildStickyBottomBar(yellowBtn),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+               HomeTopBar(
+                showProfile: true,
+                onMenuTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DogListPage()),
+                  );
+                },
+            
+                onProfileTap: () {
+                  // 🟢 เปลี่ยนเส้นทางไปหน้า User Profile
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const UserProfileScreen()),
+                  );
+                },
               ),
-            ],
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildHeader(context),
+                      const SizedBox(height: 15),
+                      _buildActivityImages(bgBlue, primaryBlue),
+                      const SizedBox(height: 15),
+                      Container(
+                        padding: const EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: primaryBlue.withOpacity(0.5)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildFormRow(
+                              "ชื่อ:",
+                              _buildInputBox(_nameController, "ชื่อค่าใช้จ่าย"),
+                              textLabelBlue,
+                            ),
+                            _buildDivider(),
+                            _buildFormRow(
+                              "วัน:",
+                              _buildPlainText(_getThaiDate(widget.selectedDateFromCalendar)),
+                              textLabelBlue,
+                            ),
+                            _buildDivider(),
+                            _buildFormRow(
+                              "เวลา:",
+                              _buildTimePicker(context),
+                              textLabelBlue,
+                            ),
+                            _buildDivider(),
+                            _buildFormRow(
+                              "จำนวนเงิน:",
+                              _buildNumberInputBox(_costController, "0.00"), 
+                              textLabelBlue,
+                            ),
+                            _buildDivider(),
+                            _buildFormRow(
+                              "โน้ต:",
+                              _buildInputBox(
+                                _noteController, 
+                                "โน๊ตเพิ่มเติม...", 
+                                kType: TextInputType.multiline,
+                                maxLines: null,
+                                action: TextInputAction.newline,
+                              ),
+                              textLabelBlue,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -317,7 +328,6 @@ class _AddExpenseEventPageState extends State<AddExpenseEventPage> {
         'note': _noteController.text,
         'images': finalImagesToSave,
         'updated_at': FieldValue.serverTimestamp(),
-        // 🟢 ไม่ส่งค่าการแจ้งเตือนและการทำซ้ำขึ้น Database อีกต่อไป
       };
 
       if (widget.eventId == null) {
@@ -464,18 +474,27 @@ class _AddExpenseEventPageState extends State<AddExpenseEventPage> {
         ),
       );
 
-  Widget _buildInputBox(TextEditingController controller, String hint, TextInputType kType) => Container(
+  // 🟢 อัปเดต _buildInputBox ให้รับ maxLines และ TextInputAction
+  Widget _buildInputBox(
+    TextEditingController controller, 
+    String hint, {
+    TextInputType kType = TextInputType.text,
+    int? maxLines = 1,
+    TextInputAction action = TextInputAction.done,
+  }) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
         child: TextField(
           controller: controller,
-          maxLines: kType == TextInputType.multiline ? null : 1,
+          maxLines: maxLines,
           keyboardType: kType,
+          textInputAction: action,
           decoration: InputDecoration(hintText: hint, border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
           style: const TextStyle(fontSize: 14),
         ),
       );
 
+  // 🟢 เพิ่ม textInputAction ลงใน _buildNumberInputBox
   Widget _buildNumberInputBox(TextEditingController controller, String hint) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
@@ -485,6 +504,7 @@ class _AddExpenseEventPageState extends State<AddExpenseEventPage> {
               child: TextField(
                 controller: controller,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                textInputAction: TextInputAction.done, // 🟢 ซ่อนคีย์บอร์ดหลังจากพิมพ์เสร็จ
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                 ],

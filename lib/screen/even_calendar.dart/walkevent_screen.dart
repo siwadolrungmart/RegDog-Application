@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:provider/provider.dart'; // 🟢 1. Import Provider
+import 'package:provider/provider.dart'; 
 
 import 'package:regdogapp/component/upperbar.dart';
 import 'package:regdogapp/screen/dog_list.dart';
@@ -13,7 +13,7 @@ import 'package:regdogapp/component/distance_picker.dart';
 import 'package:regdogapp/component/event_settings.dart';
 import 'package:regdogapp/screen/navbar_screen/calendar_screen.dart';
 import 'package:regdogapp/service/notification_service.dart';
-import 'package:regdogapp/providers/current_dog_provider.dart'; // 🟢 2. Import CurrentDogProvider
+import 'package:regdogapp/providers/current_dog_provider.dart'; 
 
 class AddWalkEventPage extends StatefulWidget {
   final DateTime selectedDateFromCalendar;
@@ -60,13 +60,16 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
   String get _formattedDuration => _selectedDuration == null
       ? "เลือกเวลา"
       : "${_selectedDuration!.inHours}:${(_selectedDuration!.inMinutes % 60).toString().padLeft(2, '0')} ชม.";
+      
   String get _formattedDistance {
     if (_selectedDistance == null) return "เลือกระยะทาง";
     String formatted = _selectedDistance!.toStringAsFixed(2);
-    if (formatted.endsWith('0'))
+    if (formatted.endsWith('0')) {
       formatted = formatted.substring(0, formatted.length - 1);
-    if (formatted.endsWith('.0'))
+    }
+    if (formatted.endsWith('.0')) {
       formatted = formatted.substring(0, formatted.length - 2);
+    }
     return "$formatted กม.";
   }
 
@@ -103,20 +106,24 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
 
       if (data['start_time'] != null) {
         DateTime? start;
-        if (data['start_time'] is Timestamp)
+        if (data['start_time'] is Timestamp) {
           start = (data['start_time'] as Timestamp).toDate();
-        else if (data['start_time'] is String)
+        } else if (data['start_time'] is String) {
           start = DateTime.tryParse(data['start_time']);
-        if (start != null)
+        }
+        if (start != null) {
           _selectedTime = TimeOfDay(hour: start.hour, minute: start.minute);
+        }
       }
 
-      if (data['duration_minutes'] != null)
+      if (data['duration_minutes'] != null) {
         _selectedDuration = Duration(
           minutes: (data['duration_minutes'] as num).toInt(),
         );
-      if (data['distance_km'] != null)
+      }
+      if (data['distance_km'] != null) {
         _selectedDistance = (data['distance_km'] as num).toDouble();
+      }
 
       _selectedReminder = data['reminder_offset_minutes'] as int?;
 
@@ -124,10 +131,11 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
         var rec = data['recurrence'];
         DateTime? parsedEndDate;
         if (rec['end_date'] != null) {
-          if (rec['end_date'] is Timestamp)
+          if (rec['end_date'] is Timestamp) {
             parsedEndDate = (rec['end_date'] as Timestamp).toDate();
-          else if (rec['end_date'] is String)
+          } else if (rec['end_date'] is String) {
             parsedEndDate = DateTime.tryParse(rec['end_date']);
+          }
         }
         _recurrenceData = RecurrenceData(
           repeatType: rec['type'] ?? "none",
@@ -185,108 +193,117 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
     const Color textLabelBlue = Color(0xFF6A97A8);
     const Color yellowBtn = Color(0xFFFFEFA6);
 
-    return Scaffold(
-      bottomNavigationBar: _buildStickyBottomBar(yellowBtn),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              HomeTopBar(
-                showProfile: true,
-                onMenuTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const DogListPage()),
+    return GestureDetector(
+      onTap: () {
+        FocusManager.instance.primaryFocus?.unfocus();
+      },
+      child: Scaffold(
+        bottomNavigationBar: _buildStickyBottomBar(yellowBtn),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                HomeTopBar(
+                  showProfile: true,
+                  onMenuTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DogListPage()),
+                  ),
                 ),
-              ),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildHeader(context),
+                      const SizedBox(height: 15),
+                      _buildActivityImages(bgBlue, primaryBlue),
+                      const SizedBox(height: 15),
 
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Column(
-                  children: [
-                    _buildHeader(context),
-                    const SizedBox(height: 15),
-                    _buildActivityImages(bgBlue, primaryBlue),
-                    const SizedBox(height: 15),
-
-                    Container(
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: primaryBlue.withOpacity(0.5)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildFormRow(
-                            "ชื่อ:",
-                            _buildInputBox(_nameController, "ชื่อกิจกรรม"),
-                            textLabelBlue,
-                          ),
-                          _buildDivider(),
-                          _buildFormRow(
-                            "วัน:",
-                            _buildPlainText(
-                              _getThaiDate(widget.selectedDateFromCalendar),
+                      Container(
+                        padding: const EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: primaryBlue.withOpacity(0.5)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildFormRow(
+                              "ชื่อ:",
+                              _buildInputBox(_nameController, "ชื่อกิจกรรม"),
+                              textLabelBlue,
                             ),
-                            textLabelBlue,
-                          ),
-                          _buildDivider(),
-                          _buildFormRow(
-                            "เวลา:",
-                            _buildTimePicker(context),
-                            textLabelBlue,
-                          ),
-                          _buildDivider(),
-                          _buildFormRow(
-                            "ระยะเวลา:",
-                            _buildDurationPickerBtn(context),
-                            textLabelBlue,
-                          ),
-                          _buildDivider(),
-                          _buildFormRow(
-                            "ระยะทาง:",
-                            _buildDistancePickerBtn(context),
-                            textLabelBlue,
-                          ),
-                          _buildDivider(),
-                          _buildFormRow(
-                            "โน้ต:",
-                            _buildInputBox(_noteController, "โน้ตเพิ่มเติม..."),
-                            textLabelBlue,
-                          ),
-                          _buildDivider(),
-                          _buildFormRow(
-                            "แจ้งเตือน:",
-                            ReminderPicker(
-                              selectedMinutes: _selectedReminder,
-                              onChanged: (val) =>
-                                  setState(() => _selectedReminder = val),
+                            _buildDivider(),
+                            _buildFormRow(
+                              "วัน:",
+                              _buildPlainText(
+                                _getThaiDate(widget.selectedDateFromCalendar),
+                              ),
+                              textLabelBlue,
                             ),
-                            textLabelBlue,
-                          ),
-                          _buildDivider(),
-                          RecurrenceSection(
-                            labelColor: textLabelBlue,
-                            primaryColor: primaryBlue,
-                            baseDate: widget.selectedDateFromCalendar,
-                            initialData: _recurrenceData,
-                            onChanged: (data) => _recurrenceData = data,
-                          ),
-                        ],
+                            _buildDivider(),
+                            _buildFormRow(
+                              "เวลา:",
+                              _buildTimePicker(context),
+                              textLabelBlue,
+                            ),
+                            _buildDivider(),
+                            _buildFormRow(
+                              "ระยะเวลา:",
+                              _buildDurationPickerBtn(context),
+                              textLabelBlue,
+                            ),
+                            _buildDivider(),
+                            _buildFormRow(
+                              "ระยะทาง:",
+                              _buildDistancePickerBtn(context),
+                              textLabelBlue,
+                            ),
+                            _buildDivider(),
+                            _buildFormRow(
+                              "โน้ต:",
+                              _buildInputBox(
+                                _noteController, 
+                                "โน้ตเพิ่มเติม...",
+                                maxLines: null, 
+                                action: TextInputAction.newline, 
+                              ),
+                              textLabelBlue,
+                            ),
+                            _buildDivider(),
+                            _buildFormRow(
+                              "แจ้งเตือน:",
+                              ReminderPicker(
+                                selectedMinutes: _selectedReminder,
+                                onChanged: (val) =>
+                                    setState(() => _selectedReminder = val),
+                              ),
+                              textLabelBlue,
+                            ),
+                            _buildDivider(),
+                            RecurrenceSection(
+                              labelColor: textLabelBlue,
+                              primaryColor: primaryBlue,
+                              baseDate: widget.selectedDateFromCalendar,
+                              initialData: _recurrenceData,
+                              onChanged: (data) => _recurrenceData = data,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 40),
-                  ],
+                      const SizedBox(height: 40),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -385,13 +402,12 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
         builder: (context) => const Center(child: CircularProgressIndicator()),
       );
 
-      // 🟢 3. เช็คและดึง dog_id ของสุนัขตัวปัจจุบันจาก Provider
       final currentDogId = Provider.of<CurrentDogProvider>(
         context,
         listen: false,
       ).currentDogId;
       if (currentDogId == null) {
-        Navigator.pop(context); // ปิด Loading
+        Navigator.pop(context); 
         _showErrorSnackBar("กรุณาเลือกน้องหมาก่อนบันทึกกิจกรรม");
         return;
       }
@@ -424,21 +440,24 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
         'interval': _recurrenceData.interval,
       };
       if (_recurrenceData.repeatType != 'none') {
-        if (_recurrenceData.repeatType == 'weekly')
+        if (_recurrenceData.repeatType == 'weekly') {
           recurrencePayload['days_of_week'] = _recurrenceData.weeklyDays;
-        if (_recurrenceData.repeatType == 'monthly')
+        }
+        if (_recurrenceData.repeatType == 'monthly') {
           recurrencePayload['monthly_mode'] = _recurrenceData.monthlyMode;
-        if (_recurrenceData.endDate != null)
+        }
+        if (_recurrenceData.endDate != null) {
           recurrencePayload['end_date'] = Timestamp.fromDate(
             _recurrenceData.endDate!,
           );
-        else if (_recurrenceData.count != null)
+        } else if (_recurrenceData.count != null) {
           recurrencePayload['count'] = _recurrenceData.count;
+        }
       }
 
       Map<String, dynamic> payload = {
         'type': 'walk',
-        'dog_id': currentDogId, // 🟢 4. เพิ่ม dog_id เข้าไปใน Firestore Payload
+        'dog_id': currentDogId, 
         'name': _nameController.text,
         'start_time': Timestamp.fromDate(startDateTime),
         'duration_minutes': _selectedDuration?.inMinutes ?? 0,
@@ -469,10 +488,12 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
       String getReminderMessage(int? minutes, String eventName) {
         if (minutes == null) return "";
         if (minutes == 0) return "ถึงเวลากิจกรรม $eventName แล้ว!";
-        if (minutes == 60)
+        if (minutes == 60) {
           return "เตรียมตัว! กิจกรรม $eventName (1 ชั่วโมง ก่อนหน้า)";
-        if (minutes == 1440)
+        }
+        if (minutes == 1440) {
           return "เตรียมตัว! กิจกรรม $eventName (1 วัน ก่อนหน้า)";
+        }
         return "เตรียมตัว! กิจกรรม $eventName ($minutes นาที ก่อนหน้า)";
       }
 
@@ -488,14 +509,13 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
 
      if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
-        Navigator.pop(context); // ปิด Loading Dialog
+        Navigator.pop(context); 
 
-        // 🟢 เปลี่ยนมาใช้คำสั่งนี้ เพื่อเคลียร์หน้าจอและเปิดกลับไปหน้า Calendar พร้อมส่งวันที่ไป
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
             builder: (context) => CalendarPage(
-              selectedDay: widget.selectedDateFromCalendar, // ส่งวันที่กลับไปให้ปฏิทิน
+              selectedDay: widget.selectedDateFromCalendar, 
             ),
           ),
           (route) => false,
@@ -682,7 +702,12 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
     ),
   );
 
-  Widget _buildInputBox(TextEditingController controller, String hint) =>
+  Widget _buildInputBox(
+    TextEditingController controller, 
+    String hint, {
+    int? maxLines = 1,
+    TextInputAction action = TextInputAction.done,
+  }) =>
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
@@ -691,8 +716,8 @@ class _AddWalkEventPageState extends State<AddWalkEventPage> {
         ),
         child: TextField(
           controller: controller,
-          maxLines: null,
-          keyboardType: TextInputType.multiline,
+          maxLines: maxLines,
+          textInputAction: action,
           decoration: InputDecoration(
             hintText: hint,
             border: InputBorder.none,

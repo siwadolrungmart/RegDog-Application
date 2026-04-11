@@ -361,7 +361,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           );
                         },
                         child: const Text(
-                          "สร้างบัญชีใหม่",
+                          "สร้างบัญชีผู้ใช้ใหม่",
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,

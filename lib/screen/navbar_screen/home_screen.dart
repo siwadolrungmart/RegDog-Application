@@ -16,10 +16,6 @@ import 'package:regdogapp/screen/summary_screen.dart';
 import 'package:regdogapp/service/dogdatabase_service.dart';
 import 'package:regdogapp/providers/current_dog_provider.dart';
 
-// 🟢 อย่าลืม Import ไฟล์ SummaryPage และ CalendarPage ของคุณ (แก้ไข path ให้ตรงกับโปรเจกต์)
-// import 'package:regdogapp/screen/summary_page.dart';
-// import 'package:regdogapp/screen/calendar_page.dart';
-
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
 
@@ -90,7 +86,7 @@ class _HomepageState extends State<Homepage> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           _buildProfileHeader(dogProvider.dogName, dogProvider.currentDogData?['photoUrl']),
-                          const SizedBox(height: 5),
+                          const SizedBox(height: 6),
 
                           // 📈 1. กราฟค่าใช้จ่าย
                           // 🟢 เพิ่มการส่งฟังก์ชันไปหน้า SummaryPage

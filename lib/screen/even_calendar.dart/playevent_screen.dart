@@ -41,7 +41,6 @@ class _AddPlayEventPageState extends State<AddPlayEventPage> {
   
   TimeOfDay _selectedTime = TimeOfDay.now(); 
   Duration? _selectedDuration;
-  // 🔴 ลบตัวแปร _selectedDistance ออก
 
   int? _selectedReminder; 
   RecurrenceData _recurrenceData = RecurrenceData(
@@ -85,7 +84,6 @@ class _AddPlayEventPageState extends State<AddPlayEventPage> {
       }
       
       if (data['duration_minutes'] != null) _selectedDuration = Duration(minutes: (data['duration_minutes'] as num).toInt());
-      // 🔴 ลบการดึงข้อมูล distance_km ออก
       
       _selectedReminder = data['reminder_offset_minutes'] as int?;
       
@@ -145,83 +143,101 @@ class _AddPlayEventPageState extends State<AddPlayEventPage> {
     const Color textLabelBlue = Color(0xFF6A97A8);
     const Color yellowBtn = Color(0xFFFFEFA6);
 
-    return Scaffold(
-      bottomNavigationBar: _buildStickyBottomBar(yellowBtn), 
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-             HomeTopBar(
-      showProfile: true,
-      onMenuTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const DogListPage()),
-        );
+    // 🟢 ครอบด้วย GestureDetector เพื่อซ่อนคีย์บอร์ดเมื่อแตะพื้นที่ว่าง
+    return GestureDetector(
+      onTap: () {
+        FocusManager.instance.primaryFocus?.unfocus();
       },
-  
-      onProfileTap: () {
-        // 🟢 เปลี่ยนเส้นทางไปหน้า User Profile
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const UserProfileScreen()),
-        );
-      },
-    ),
-
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
-                child: Column(
-                  children: [
-                    _buildHeader(context),
-                    const SizedBox(height: 15),
-                    _buildActivityImages(bgBlue, primaryBlue), 
-                    const SizedBox(height: 15),
-
-                    Container(
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: primaryBlue.withOpacity(0.5)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          
-                          _buildFormRow("ชื่อ:", _buildInputBox(_nameController, "ชื่อกิจกรรม"), textLabelBlue),
-                          _buildDivider(),
-                          _buildFormRow("วัน:", _buildPlainText(_getThaiDate(widget.selectedDateFromCalendar)), textLabelBlue),
-                          _buildDivider(),
-                          _buildFormRow("เวลา:", _buildTimePicker(context), textLabelBlue),
-                          _buildDivider(),
-                          _buildFormRow("ระยะเวลา:", _buildDurationPickerBtn(context), textLabelBlue),
-                          _buildDivider(),
-                          // 🔴 ลบ _buildFormRow("ระยะทาง:"...) ออก
-                          _buildFormRow("โน้ต:", _buildInputBox(_noteController, "โน้ตเพิ่มเติม..."), textLabelBlue),
-                          _buildDivider(),
-                          _buildFormRow(
-                            "แจ้งเตือน:", 
-                            ReminderPicker(selectedMinutes: _selectedReminder, onChanged: (val) => setState(() => _selectedReminder = val)), 
-                            textLabelBlue
-                          ),
-                          _buildDivider(),
-                          RecurrenceSection(
-                            labelColor: textLabelBlue, primaryColor: primaryBlue,
-                            baseDate: widget.selectedDateFromCalendar, initialData: _recurrenceData, 
-                            onChanged: (data) => _recurrenceData = data, 
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 40), 
-                  ],
+      child: Scaffold(
+        bottomNavigationBar: _buildStickyBottomBar(yellowBtn), 
+        body: SafeArea(
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+               HomeTopBar(
+                  showProfile: true,
+                  onMenuTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const DogListPage()),
+                    );
+                  },
+              
+                  onProfileTap: () {
+                    // 🟢 เปลี่ยนเส้นทางไปหน้า User Profile
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const UserProfileScreen()),
+                    );
+                  },
                 ),
-              ),
-            ],
+  
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
+                  child: Column(
+                    children: [
+                      _buildHeader(context),
+                      const SizedBox(height: 15),
+                      _buildActivityImages(bgBlue, primaryBlue), 
+                      const SizedBox(height: 15),
+  
+                      Container(
+                        padding: const EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: primaryBlue.withOpacity(0.5)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            
+                            _buildFormRow(
+                              "ชื่อ:", 
+                              _buildInputBox(_nameController, "ชื่อกิจกรรม"), 
+                              textLabelBlue
+                            ),
+                            _buildDivider(),
+                            _buildFormRow("วัน:", _buildPlainText(_getThaiDate(widget.selectedDateFromCalendar)), textLabelBlue),
+                            _buildDivider(),
+                            _buildFormRow("เวลา:", _buildTimePicker(context), textLabelBlue),
+                            _buildDivider(),
+                            _buildFormRow("ระยะเวลา:", _buildDurationPickerBtn(context), textLabelBlue),
+                            _buildDivider(),
+                            _buildFormRow(
+                              "โน้ต:", 
+                              _buildInputBox(
+                                _noteController, 
+                                "โน้ตเพิ่มเติม...",
+                                maxLines: null,
+                                action: TextInputAction.newline,
+                              ), 
+                              textLabelBlue
+                            ),
+                            _buildDivider(),
+                            _buildFormRow(
+                              "แจ้งเตือน:", 
+                              ReminderPicker(selectedMinutes: _selectedReminder, onChanged: (val) => setState(() => _selectedReminder = val)), 
+                              textLabelBlue
+                            ),
+                            _buildDivider(),
+                            RecurrenceSection(
+                              labelColor: textLabelBlue, primaryColor: primaryBlue,
+                              baseDate: widget.selectedDateFromCalendar, initialData: _recurrenceData, 
+                              onChanged: (data) => _recurrenceData = data, 
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 40), 
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -312,7 +328,6 @@ class _AddPlayEventPageState extends State<AddPlayEventPage> {
         'name': _nameController.text,
         'start_time': Timestamp.fromDate(startDateTime), 
         'duration_minutes': _selectedDuration?.inMinutes ?? 0,
-        // 🔴 ลบ distance_km ออก
         'note': _noteController.text,
         'reminder_offset_minutes': _selectedReminder, 
         'recurrence': recurrencePayload,
@@ -439,7 +454,33 @@ class _AddPlayEventPageState extends State<AddPlayEventPage> {
 
   Widget _buildFormRow(String label, Widget child, Color labelColor) => Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [SizedBox(width: 100, child: Text(label, style: GoogleFonts.inter(color: labelColor, fontSize: 14))), Expanded(child: child)]));
   
-  Widget _buildInputBox(TextEditingController controller, String hint) => Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)), child: TextField(controller: controller, maxLines: null, keyboardType: TextInputType.multiline, decoration: InputDecoration(hintText: hint, border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero), style: const TextStyle(fontSize: 14)));
+  // 🟢 อัปเดต _buildInputBox ให้รับ action และ maxLines ได้
+  Widget _buildInputBox(
+    TextEditingController controller, 
+    String hint, {
+    int? maxLines = 1,
+    TextInputAction action = TextInputAction.done,
+  }) => 
+    Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), 
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey[300]!), 
+        borderRadius: BorderRadius.circular(8)
+      ), 
+      child: TextField(
+        controller: controller, 
+        maxLines: maxLines, 
+        textInputAction: action,
+        keyboardType: TextInputType.multiline, 
+        decoration: InputDecoration(
+          hintText: hint, 
+          border: InputBorder.none, 
+          isDense: true, 
+          contentPadding: EdgeInsets.zero
+        ), 
+        style: const TextStyle(fontSize: 14)
+      )
+    );
   
   Widget _buildDivider() => const Divider(height: 20, thickness: 1, color: Color(0xFFF0F0F0));
   
@@ -448,8 +489,6 @@ class _AddPlayEventPageState extends State<AddPlayEventPage> {
   Widget _buildTimePicker(BuildContext context) => InkWell(onTap: () async { final time = await showTimePicker(context: context, initialTime: _selectedTime); if (time != null) setState(() => _selectedTime = time); }, child: Text("${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')} น.", style: const TextStyle(color: Colors.blue)));
   
   Widget _buildDurationPickerBtn(BuildContext context) => InkWell(onTap: () => showModalBottomSheet(context: context, backgroundColor: Colors.transparent, builder: (_) => DurationPicker(initialDuration: _selectedDuration ?? Duration.zero, onDurationChanged: (d) => setState(() => _selectedDuration = d))), child: Text(_formattedDuration, style: const TextStyle(color: Colors.blue)));
-  
-  // 🔴 ลบ _buildDistancePickerBtn ออก เพราะไม่ได้ใช้แล้ว
 
   Widget _buildStickyBottomBar(Color col) {
     return SafeArea(

@@ -9,7 +9,6 @@ import 'package:provider/provider.dart';
 import 'package:regdogapp/component/upperbar.dart';
 import 'package:regdogapp/screen/dog_list.dart';
 import 'package:regdogapp/providers/current_dog_provider.dart'; 
-// 🟢 Import Component สำหรับเลือกระยะเวลา
 import 'package:regdogapp/component/duration_picker.dart';
 import 'package:regdogapp/screen/navbar_screen/calendar_screen.dart';
 import 'package:regdogapp/screen/register_screen/profile_user_screen.dart';
@@ -33,11 +32,11 @@ class AddSymptomEventPage extends StatefulWidget {
 class _AddSymptomEventPageState extends State<AddSymptomEventPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   
-  final TextEditingController _nameController = TextEditingController();
+  // 🟢 ตั้งค่า Default ชื่อเป็น "อาการ" เหมือนหน้าก่อนๆ
+  final TextEditingController _nameController = TextEditingController(text: "อาการ");
   final TextEditingController _noteController = TextEditingController();
   
   TimeOfDay _selectedTime = TimeOfDay.now(); 
-  // 🟢 เพิ่มตัวแปรระยะเวลา
   Duration? _selectedDuration;
 
   final List<File> _selectedLocalImages = []; 
@@ -46,7 +45,6 @@ class _AddSymptomEventPageState extends State<AddSymptomEventPage> {
   
   final ImagePicker _picker = ImagePicker();
 
-  // 🟢 ฟังก์ชันจัดรูปแบบตัวอักษรของระยะเวลาที่เลือก
   String get _formattedDuration => _selectedDuration == null ? "เลือกเวลา" : "${_selectedDuration!.inHours}:${(_selectedDuration!.inMinutes % 60).toString().padLeft(2, '0')} ชม.";
 
   String _getThaiDate(DateTime date) {
@@ -60,7 +58,8 @@ class _AddSymptomEventPageState extends State<AddSymptomEventPage> {
     if (widget.eventData != null) {
       final data = widget.eventData!;
       
-      _nameController.text = data['name'] ?? "";
+      // 🟢 ดึงข้อมูลเดิม ถ้าไม่มีให้เป็น "อาการ"
+      _nameController.text = data['name'] ?? "อาการ";
       _noteController.text = data['note'] ?? "";
       
       if (data['images'] != null) {
@@ -77,7 +76,6 @@ class _AddSymptomEventPageState extends State<AddSymptomEventPage> {
         if (start != null) _selectedTime = TimeOfDay(hour: start.hour, minute: start.minute);
       }
 
-      // 🟢 ดึงข้อมูลระยะเวลาเดิม (ถ้ามี)
       if (data['duration_minutes'] != null) {
         _selectedDuration = Duration(minutes: (data['duration_minutes'] as num).toInt());
       }
@@ -123,74 +121,91 @@ class _AddSymptomEventPageState extends State<AddSymptomEventPage> {
     const Color textLabelBlue = Color(0xFF6A97A8);
     const Color yellowBtn = Color(0xFFFFEFA6);
 
-    return Scaffold(
-      bottomNavigationBar: _buildStickyBottomBar(yellowBtn), 
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-            HomeTopBar(
-      showProfile: true,
-      onMenuTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const DogListPage()),
-        );
+    // 🟢 ครอบ GestureDetector เพื่อดักการกดพื้นที่ว่างซ่อนคีย์บอร์ด
+    return GestureDetector(
+      onTap: () {
+        FocusManager.instance.primaryFocus?.unfocus();
       },
-  
-      onProfileTap: () {
-        // 🟢 เปลี่ยนเส้นทางไปหน้า User Profile
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const UserProfileScreen()),
-        );
-      },
-    ),
-
-              Container(
-                 width: double.infinity,
-                constraints: const BoxConstraints(
-                  minHeight: 690, 
-                ),
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
-                child: Column(
-                  children: [
-                    _buildHeader(context),
-                    const SizedBox(height: 15),
-                    _buildActivityImages(bgBlue, primaryBlue), 
-                    const SizedBox(height: 15),
-
-                    Container(
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: primaryBlue.withOpacity(0.5)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          
-                          _buildFormRow("ชื่อ:", _buildInputBox(_nameController, "เช่น อาเจียน, ไอ"), textLabelBlue),
-                          _buildDivider(),
-                          _buildFormRow("วัน:", _buildPlainText(_getThaiDate(widget.selectedDateFromCalendar)), textLabelBlue),
-                          _buildDivider(),
-                          _buildFormRow("เวลา:", _buildTimePicker(context), textLabelBlue),
-                          _buildDivider(),
-                          // 🟢 เพิ่มช่องระยะเวลา
-                          _buildFormRow("ระยะเวลา:", _buildDurationPickerBtn(context), textLabelBlue),
-                          _buildDivider(),
-                          _buildFormRow("โน้ต:", _buildInputBox(_noteController, "รายละเอียดเพิ่มเติม..."), textLabelBlue),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 40), 
-                  ],
-                ),
+      child: Scaffold(
+        bottomNavigationBar: _buildStickyBottomBar(yellowBtn), 
+        body: SafeArea(
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+              HomeTopBar(
+                showProfile: true,
+                onMenuTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DogListPage()),
+                  );
+                },
+            
+                onProfileTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const UserProfileScreen()),
+                  );
+                },
               ),
-            ],
+
+                Container(
+                   width: double.infinity,
+                  constraints: const BoxConstraints(
+                    minHeight: 690, 
+                  ),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
+                  child: Column(
+                    children: [
+                      _buildHeader(context),
+                      const SizedBox(height: 15),
+                      _buildActivityImages(bgBlue, primaryBlue), 
+                      const SizedBox(height: 15),
+
+                      Container(
+                        padding: const EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: primaryBlue.withOpacity(0.5)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            
+                            _buildFormRow(
+                              "ชื่อ:", 
+                              _buildInputBox(_nameController, "เช่น อาเจียน, ไอ"), 
+                              textLabelBlue
+                            ),
+                            _buildDivider(),
+                            _buildFormRow("วัน:", _buildPlainText(_getThaiDate(widget.selectedDateFromCalendar)), textLabelBlue),
+                            _buildDivider(),
+                            _buildFormRow("เวลา:", _buildTimePicker(context), textLabelBlue),
+                            _buildDivider(),
+                            _buildFormRow("ระยะเวลา:", _buildDurationPickerBtn(context), textLabelBlue),
+                            _buildDivider(),
+                            _buildFormRow(
+                              "โน้ต:", 
+                              _buildInputBox(
+                                _noteController, 
+                                "รายละเอียดเพิ่มเติม...",
+                                maxLines: null,
+                                action: TextInputAction.newline,
+                              ), 
+                              textLabelBlue
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 40), 
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -273,7 +288,6 @@ class _AddSymptomEventPageState extends State<AddSymptomEventPage> {
         'dog_id': currentDogId, 
         'name': _nameController.text,
         'start_time': Timestamp.fromDate(startDateTime), 
-        // 🟢 บันทึกข้อมูลระยะเวลาลงฐานข้อมูล
         'duration_minutes': _selectedDuration?.inMinutes ?? 0,
         'note': _noteController.text,
         'images': finalImagesToSave, 
@@ -289,14 +303,13 @@ class _AddSymptomEventPageState extends State<AddSymptomEventPage> {
 
       if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
-        Navigator.pop(context); // ปิด Loading Dialog
+        Navigator.pop(context); 
 
-        // 🟢 เปลี่ยนมาใช้คำสั่งนี้ เพื่อเคลียร์หน้าจอและเปิดกลับไปหน้า Calendar พร้อมส่งวันที่ไป
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
             builder: (context) => CalendarPage(
-              selectedDay: widget.selectedDateFromCalendar, // ส่งวันที่กลับไปให้ปฏิทิน
+              selectedDay: widget.selectedDateFromCalendar, 
             ),
           ),
           (route) => false,
@@ -304,7 +317,7 @@ class _AddSymptomEventPageState extends State<AddSymptomEventPage> {
 
         messenger.showSnackBar(
           const SnackBar(
-            content: Text("บันทึกกิจกรรมเรียบร้อยแล้ว"),
+            content: Text("บันทึกข้อมูลเรียบร้อยแล้ว"),
             backgroundColor: Colors.green,
           ),
         );
@@ -375,7 +388,33 @@ class _AddSymptomEventPageState extends State<AddSymptomEventPage> {
 
   Widget _buildFormRow(String label, Widget child, Color labelColor) => Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [SizedBox(width: 100, child: Text(label, style: GoogleFonts.inter(color: labelColor, fontSize: 14))), Expanded(child: child)]));
   
-  Widget _buildInputBox(TextEditingController controller, String hint) => Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)), child: TextField(controller: controller, maxLines: null, keyboardType: TextInputType.multiline, decoration: InputDecoration(hintText: hint, border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero), style: const TextStyle(fontSize: 14)));
+  // 🟢 อัปเดต _buildInputBox ให้รับ action และ maxLines ได้
+  Widget _buildInputBox(
+    TextEditingController controller, 
+    String hint, {
+    int? maxLines = 1,
+    TextInputAction action = TextInputAction.done,
+  }) => 
+    Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), 
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey[300]!), 
+        borderRadius: BorderRadius.circular(8)
+      ), 
+      child: TextField(
+        controller: controller, 
+        maxLines: maxLines, 
+        textInputAction: action,
+        keyboardType: TextInputType.multiline, 
+        decoration: InputDecoration(
+          hintText: hint, 
+          border: InputBorder.none, 
+          isDense: true, 
+          contentPadding: EdgeInsets.zero
+        ), 
+        style: const TextStyle(fontSize: 14)
+      )
+    );
   
   Widget _buildDivider() => const Divider(height: 20, thickness: 1, color: Color(0xFFF0F0F0));
   
@@ -383,7 +422,6 @@ class _AddSymptomEventPageState extends State<AddSymptomEventPage> {
   
   Widget _buildTimePicker(BuildContext context) => InkWell(onTap: () async { final time = await showTimePicker(context: context, initialTime: _selectedTime); if (time != null) setState(() => _selectedTime = time); }, child: Text("${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')} น.", style: const TextStyle(color: Colors.blue)));
 
-  // 🟢 ฟังก์ชันวิดเจ็ตสำหรับปุ่มเลือกระยะเวลา
   Widget _buildDurationPickerBtn(BuildContext context) => InkWell(
     onTap: () {
       showModalBottomSheet(

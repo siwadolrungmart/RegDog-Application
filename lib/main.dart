@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart'; // 🟢 เพิ่มบรรทั
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:regdogapp/screen/even_calendar.dart/vaccinevent_screen.dart';
 import 'package:regdogapp/screen/login_screen.dart';
 import 'package:regdogapp/screen/navbar_screen/calendar_screen.dart';
 import 'package:regdogapp/providers/current_dog_provider.dart';
@@ -11,6 +12,8 @@ import 'package:regdogapp/screen/navbar_screen/home_screen.dart';
 import 'package:regdogapp/screen/navbar_screen/places_screen.dart';
 import 'package:regdogapp/screen/qr_scan_result_page.dart';
 import 'package:regdogapp/screen/register_screen/profile_user_screen.dart';
+import 'package:regdogapp/screen/register_screen/registerbreed.dart';
+import 'package:regdogapp/screen/register_screen/registerdogname.dart';
 import 'package:regdogapp/service/notification_service.dart'; 
 import 'firebase_options.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -46,7 +49,7 @@ class MyApp extends StatelessWidget {
     
     // ==========================================
     // 🌐 โหมด WEB: สำหรับคนสแกน QR Code (จะโชว์แค่นี้)
-    // ==========================================
+    // ============================================
     if (kIsWeb) {
       // ดึงรหัส dogId จากลิงก์เว็บที่สแกนมา
       final dogId = Uri.base.queryParameters['dogId'];
@@ -129,7 +132,7 @@ class MyApp extends StatelessWidget {
       ],
       
       // เข้าแอปมาเจอหน้า Login
-      home: const LoginScreen(), 
+      home: const  LoginScreen(), 
     );
   }
 }
